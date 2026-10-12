@@ -1,0 +1,1145 @@
+openapi: 3.0.3
+info:
+  title: Prompt Dock API
+  version: 1.0.0
+  description: |
+    Backend API for Prompt Dock, a community-driven platform for discovering,
+    saving, sharing, rating, forking, and improving prompts and AI skills.
+    Built with FastAPI and SQLite.
+
+    Authentication: protected routes require a JWT access token sent as
+    `Authorization: Bearer <token>`. All routes under /api/users/me and every
+    POST, PUT, and DELETE route require a token, except register and login.
+
+    Errors: every error response uses the shape
+    `{ "error": { "code": "...", "message": "..." } }`.
+servers:
+  - url: http://localhost:8000
+    description: Local development server
+
+tags:
+  - name: Auth
+    description: Registration and login
+  - name: Users
+    description: Profiles and saved skills
+  - name: Categories
+    description: Skill categories
+  - name: Skills
+    description: Creating, browsing, searching, and managing skills
+  - name: Reviews
+    description: Ratings and comments on skills
+  - name: Reports
+    description: Reporting inappropriate skills
+  - name: Versions
+    description: Skill version history and restore
+  - name: Forks
+    description: Forking skills and comparing forks to originals
+
+paths:
+  # Auth
+  /api/auth/register:
+    post:
+      tags: [Auth]
+      summary: Create a new account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Account created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPrivate'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /api/auth/login:
+    post:
+      tags: [Auth]
+      summary: Log in and receive a JWT access token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # Users
+  /api/users/me:
+    get:
+      tags: [Users]
+      summary: View own profile
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Own profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPrivate'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    put:
+      tags: [Users]
+      summary: Update own profile
+      description: Requires the current password. Can change username, email, or password.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProfileRequest'
+      responses:
+        '200':
+          description: Profile updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPrivate'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    delete:
+      tags: [Users]
+      summary: Delete own account
+      description: Also deletes the user's skills, reviews, reports, and saved items.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/users/me/saved:
+    get:
+      tags: [Users]
+      summary: View own saved skills
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of saved skills (may be empty)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SavedSkill'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [Users]
+      summary: Save a skill (optionally a specific version)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveSkillRequest'
+      responses:
+        '201':
+          description: Skill saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SavedSkill'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /api/users/me/saved/{saved_id}:
+    delete:
+      tags: [Users]
+      summary: Unsave a skill
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/SavedId'
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/users/{user_id}:
+    get:
+      tags: [Users]
+      summary: View another user's public profile
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: Public profile (email is never included)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPublic'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/users/{user_id}/skills:
+    get:
+      tags: [Users]
+      summary: List a user's public skills
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Paginated list of the user's public skills (may be empty)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SkillList'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # Categories
+  /api/categories:
+    get:
+      tags: [Categories]
+      summary: List all categories
+      responses:
+        '200':
+          description: List of categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Category'
+
+  /api/categories/{category_id}:
+    get:
+      tags: [Categories]
+      summary: Get one category and its public skills
+      parameters:
+        - $ref: '#/components/parameters/CategoryId'
+      responses:
+        '200':
+          description: Category with its public skills
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryWithSkills'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # Skills
+  /api/skills:
+    get:
+      tags: [Skills]
+      summary: Browse, search, and filter public skills
+      description: Use sort=trending with limit=10 for a category's weekly Top 10.
+      parameters:
+        - name: search
+          in: query
+          required: false
+          description: Text searched in skill titles and descriptions
+          schema:
+            type: string
+        - name: category_id
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: sort
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [newest, oldest, title, rating, trending]
+            default: newest
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Paginated list of skills (empty data array if nothing matches)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SkillList'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+    post:
+      tags: [Skills]
+      summary: Create a new skill
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SkillCreate'
+      responses:
+        '201':
+          description: Skill created (current_version starts at 1)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Skill'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/skills/{skill_id}:
+    get:
+      tags: [Skills]
+      summary: Get one skill's details
+      description: Returns 404 if the skill is private and the requester is not the owner.
+      parameters:
+        - $ref: '#/components/parameters/SkillId'
+      responses:
+        '200':
+          description: Skill details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Skill'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Skills]
+      summary: Edit own skill
+      description: Saves the current state as a version first, then applies changes and increases current_version by 1.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/SkillId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SkillUpdate'
+      responses:
+        '200':
+          description: Skill updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Skill'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Skills]
+      summary: Delete own skill
+      description: Deletes the skill's versions, reviews, reports, and saves. Forks remain with parent_skill_id set to null.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/SkillId'
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # Reviews
+  /api/skills/{skill_id}/reviews:
+    get:
+      tags: [Reviews]
+      summary: View a skill's reviews
+      parameters:
+        - $ref: '#/components/parameters/SkillId'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Average rating and list of reviews (may be empty)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewList'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      tags: [Reviews]
+      summary: Rate and optionally comment on a skill
+      description: Each user can review a skill only once.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/SkillId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewCreate'
+      responses:
+        '201':
+          description: Review created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Review'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /api/reviews/{review_id}:
+    put:
+      tags: [Reviews]
+      summary: Edit own review
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ReviewId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewUpdate'
+      responses:
+        '200':
+          description: Review updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Review'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Reviews]
+      summary: Delete own review
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ReviewId'
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # Reports
+  /api/skills/{skill_id}/reports:
+    post:
+      tags: [Reports]
+      summary: Report a skill
+      description: Reports start as pending and are reviewed manually by the dev team.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/SkillId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReportCreate'
+      responses:
+        '201':
+          description: Report submitted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Report'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # Versions
+  /api/skills/{skill_id}/versions:
+    get:
+      tags: [Versions]
+      summary: View a skill's version history
+      parameters:
+        - $ref: '#/components/parameters/SkillId'
+      responses:
+        '200':
+          description: List of versions, newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SkillVersionSummary'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/skills/{skill_id}/versions/{version_id}:
+    get:
+      tags: [Versions]
+      summary: View one version
+      parameters:
+        - $ref: '#/components/parameters/SkillId'
+        - $ref: '#/components/parameters/VersionId'
+      responses:
+        '200':
+          description: Full version details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SkillVersion'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/skills/{skill_id}/versions/{version_id}/restore:
+    post:
+      tags: [Versions]
+      summary: Restore an older version as a new version
+      description: Never deletes newer versions. Restoring v1 while on v3 creates v4.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/SkillId'
+        - $ref: '#/components/parameters/VersionId'
+      responses:
+        '200':
+          description: Skill updated with a new current_version
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Skill'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # Forks
+  /api/skills/{skill_id}/fork:
+    post:
+      tags: [Forks]
+      summary: Fork a skill into your own copy
+      description: Creates a new skill owned by the current user with parent_skill_id set to the original, keeping credit for the original author.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/SkillId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForkRequest'
+      responses:
+        '201':
+          description: Forked skill created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Skill'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/skills/{skill_id}/forks:
+    get:
+      tags: [Forks]
+      summary: List forks of a skill
+      parameters:
+        - $ref: '#/components/parameters/SkillId'
+      responses:
+        '200':
+          description: List of public forks (may be empty)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Skill'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/skills/{skill_id}/compare:
+    get:
+      tags: [Forks]
+      summary: Compare a fork to its original
+      description: skill_id is the fork. Returns both so the frontend can highlight differences.
+      parameters:
+        - $ref: '#/components/parameters/SkillId'
+      responses:
+        '200':
+          description: Original and fork side by side
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompareResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    UserId:
+      name: user_id
+      in: path
+      required: true
+      schema:
+        type: integer
+    SkillId:
+      name: skill_id
+      in: path
+      required: true
+      schema:
+        type: integer
+    CategoryId:
+      name: category_id
+      in: path
+      required: true
+      schema:
+        type: integer
+    ReviewId:
+      name: review_id
+      in: path
+      required: true
+      schema:
+        type: integer
+    VersionId:
+      name: version_id
+      in: path
+      required: true
+      schema:
+        type: integer
+    SavedId:
+      name: saved_id
+      in: path
+      required: true
+      schema:
+        type: integer
+    Page:
+      name: page
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    Limit:
+      name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 10
+
+  responses:
+    Success:
+      description: Action completed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Message'
+    BadRequest:
+      description: Invalid or missing input
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: INVALID_INPUT
+              message: Rating must be between 1 and 5.
+    Unauthorized:
+      description: Missing, invalid, or expired token, or incorrect credentials
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: UNAUTHORIZED
+              message: Missing or invalid token.
+    Forbidden:
+      description: Authenticated but not the owner of this resource
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: NOT_OWNER
+              message: You do not own this resource.
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: NOT_FOUND
+              message: Skill not found.
+    Conflict:
+      description: Conflicts with existing data
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: CONFLICT
+              message: Email or username already taken.
+
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              example: SKILL_NOT_FOUND
+            message:
+              type: string
+              example: Skill not found.
+
+    Message:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Deleted successfully.
+
+    # Users
+    RegisterRequest:
+      type: object
+      required: [username, email, password]
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 30
+          pattern: '^[A-Za-z0-9_]+$'
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+          minLength: 8
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+
+    TokenResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+        token_type:
+          type: string
+          example: bearer
+
+    UpdateProfileRequest:
+      type: object
+      required: [current_password]
+      properties:
+        current_password:
+          type: string
+          format: password
+        username:
+          type: string
+          minLength: 3
+          maxLength: 30
+          pattern: '^[A-Za-z0-9_]+$'
+        email:
+          type: string
+          format: email
+        new_password:
+          type: string
+          format: password
+          minLength: 8
+
+    UserPrivate:
+      type: object
+      description: Returned only to the account owner
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        created_at:
+          type: string
+          format: date-time
+
+    UserPublic:
+      type: object
+      description: Public profile; never includes email
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    SaveSkillRequest:
+      type: object
+      required: [skill_id]
+      properties:
+        skill_id:
+          type: integer
+        version_id:
+          type: integer
+          nullable: true
+          description: Null means always the latest version
+
+    SavedSkill:
+      type: object
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: integer
+        skill_id:
+          type: integer
+        version_id:
+          type: integer
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    # Categories
+    Category:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+          maxLength: 50
+        description:
+          type: string
+          maxLength: 300
+          nullable: true
+
+    CategoryWithSkills:
+      allOf:
+        - $ref: '#/components/schemas/Category'
+        - type: object
+          properties:
+            skills:
+              type: array
+              items:
+                $ref: '#/components/schemas/Skill'
+
+    # Skills
+    Skill:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+        content:
+          type: string
+          description: The actual prompt or skill text
+        current_version:
+          type: integer
+          minimum: 1
+        parent_skill_id:
+          type: integer
+          nullable: true
+          description: Null for originals; the original's id for forks
+        user_id:
+          type: integer
+        category_id:
+          type: integer
+        is_public:
+          type: boolean
+        average_rating:
+          type: number
+          nullable: true
+          description: Calculated from reviews, not stored
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    SkillCreate:
+      type: object
+      required: [title, description, content, category_id]
+      properties:
+        title:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+        content:
+          type: string
+        category_id:
+          type: integer
+        is_public:
+          type: boolean
+          default: true
+
+    SkillUpdate:
+      type: object
+      description: All fields optional; only provided fields are changed
+      properties:
+        title:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+        content:
+          type: string
+        category_id:
+          type: integer
+        is_public:
+          type: boolean
+
+    SkillList:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Skill'
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+
+    # Versions
+    SkillVersionSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+        version_number:
+          type: integer
+        title:
+          type: string
+        edited_by:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+
+    SkillVersion:
+      type: object
+      properties:
+        id:
+          type: integer
+        skill_id:
+          type: integer
+        version_number:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        content:
+          type: string
+        edited_by:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+
+    # Forks
+    ForkRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 100
+          description: Optional new title; defaults to the original's title
+
+    CompareResponse:
+      type: object
+      properties:
+        original:
+          $ref: '#/components/schemas/Skill'
+        fork:
+          $ref: '#/components/schemas/Skill'
+
+    # Reviews
+    Review:
+      type: object
+      properties:
+        id:
+          type: integer
+        skill_id:
+          type: integer
+        user_id:
+          type: integer
+        rating:
+          type: number
+          minimum: 1
+          maximum: 5
+        comment:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ReviewCreate:
+      type: object
+      required: [rating]
+      properties:
+        rating:
+          type: number
+          minimum: 1
+          maximum: 5
+        comment:
+          type: string
+
+    ReviewUpdate:
+      type: object
+      properties:
+        rating:
+          type: number
+          minimum: 1
+          maximum: 5
+        comment:
+          type: string
+
+    ReviewList:
+      type: object
+      properties:
+        average_rating:
+          type: number
+          nullable: true
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Review'
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+
+    # Reports
+    ReportCreate:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          enum: [spam, inappropriate, harmful, copyright, other]
+        details:
+          type: string
+
+    Report:
+      type: object
+      properties:
+        id:
+          type: integer
+        skill_id:
+          type: integer
+        user_id:
+          type: integer
+        reason:
+          type: string
+          enum: [spam, inappropriate, harmful, copyright, other]
+        details:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [pending, reviewed, dismissed]
+          default: pending
+        created_at:
+          type: string
+          format: date-time
