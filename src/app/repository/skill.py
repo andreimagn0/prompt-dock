@@ -28,9 +28,12 @@ def list_public_skills(
     user_id: int | None = None,
     sort: str = "newest",
     page: int = 1,
-    limit: int = 10,
+    limit: int | None = 10,
 ) -> tuple[list[Skill], int]:
-    """Return one page of public skills and the total number that match."""
+    """Return one page of public skills and the total number that match.
+
+    limit=None returns every match with no paging.
+    """
 
     if sort not in SORTS:
         raise ValueError(f"Unsupported sort: {sort}")
@@ -47,14 +50,10 @@ def list_public_skills(
         filters.append(Skill.user_id == user_id)
 
     total = db.scalar(select(func.count()).select_from(Skill).where(*filters))
-    skills = db.scalars(
-        select(Skill)
-        .where(*filters)
-        .order_by(*SORTS[sort])
-        .offset((page - 1) * limit)
-        .limit(limit)
-    )
-    return list(skills), total
+    query = select(Skill).where(*filters).order_by(*SORTS[sort])
+    if limit is not None:
+        query = query.offset((page - 1) * limit).limit(limit)
+    return list(db.scalars(query)), total
 
 
 def create_skill(db: Session, data: SkillCreate, user_id: int) -> Skill:
