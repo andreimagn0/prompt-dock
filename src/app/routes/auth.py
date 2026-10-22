@@ -1,12 +1,11 @@
 from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 
-from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.auth import hash_password, create_access_token, verify_password
-from app.models.user import User
+from app.core.auth import create_access_token, verify_password
+from app.repository import user as user_repo
 
 from app.schemas.user import UserResponse, UserRegister, UserLogin
 from app.schemas.token import Token
@@ -21,16 +20,10 @@ def register(
     db: Annotated[Session, Depends(get_db)]
 ) -> UserResponse:
 
-    taken = db.query(User).filter(or_(User.email == data.email, User.username == data.username)).first()
-    if taken: 
+    if user_repo.username_taken(db, data.username) or user_repo.email_taken(db, data.email):
         raise HTTPException(status_code=409, detail="Email or username already taken")
 
-    user = User(username=data.username, email=data.email, password_hash=hash_password(data.password))
-    db.add(user)
-    db.commit()
-    db.refresh(user)
-
-    return user
+    return user_repo.create_user(db, data.username, data.email, data.password)
 
 
 @router.post("/auth/login", status_code=200)
@@ -39,7 +32,7 @@ def login(
     db: Annotated[Session, Depends(get_db)]
 ) -> Token:
     
-    user = db.query(User).filter(or_(User.email == data.identifier, User.username == data.identifier)).first()
+    user = user_repo.get_user_by_login(db, data.identifier)
 
     if not user or not verify_password(data.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Incorrect username/email or password")

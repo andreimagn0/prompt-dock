@@ -6,6 +6,7 @@ from app.core.auth import verify_password
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.models.user import User
+from app.repository import user as user_repo
 from app.schemas.user import UserPublic, UserResponse, UserUpdate
 
 router = APIRouter()
@@ -28,19 +29,13 @@ def update_profile(
     if not verify_password(data.current_password, current_user.password_hash):
         raise HTTPException(status_code=401, detail="Current password is incorrect")
 
-    if data.username and data.username != current_user.username:
-        if db.query(User).filter(User.username == data.username).first():
-            raise HTTPException(status_code=409, detail="Username already taken")
-        current_user.username = data.username
+    if data.username and data.username != current_user.username and user_repo.username_taken(db, data.username):
+        raise HTTPException(status_code=409, detail="Username already taken")
 
-    if data.email and data.email != current_user.email:
-        if db.query(User).filter(User.email == data.email).first():
-            raise HTTPException(status_code=409, detail="Email already taken")
-        current_user.email = data.email
+    if data.email and data.email != current_user.email and user_repo.email_taken(db, data.email):
+        raise HTTPException(status_code=409, detail="Email already taken")
 
-    db.commit()
-    db.refresh(current_user)
-    return current_user
+    return user_repo.update_user(db, current_user, data.username, data.email)
 
 @router.delete("/users/me")
 def delete_profile(
@@ -48,8 +43,7 @@ def delete_profile(
     db: Annotated[Session, Depends(get_db)],    
 ) -> dict:
 
-    db.delete(current_user)
-    db.commit()
+    user_repo.delete_user(db, current_user)
     return {"message": "Account deleted successfully"}
 
 # GET /api/users/{id}: public profile, no email shown
@@ -59,7 +53,7 @@ def public_profile(
     db: Annotated[Session, Depends(get_db)]
 ) -> UserPublic:
 
-    user = db.get(User, id)
+    user = user_repo.get_user(db, id)
     if not user: 
         raise HTTPException(status_code=404, detail="User not found")
 
