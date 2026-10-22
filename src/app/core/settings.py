@@ -24,7 +24,8 @@ class Settings(BaseSettings):
     app_name: str = "Prompt-Dock API"
     environment: str = "development"
     database_url: str = "sqlite:///./prompt_dock.db"
-    secret_key: str = "dev-only-change-me"
+    # HS256 needs at least 32 bytes; set a long random SECRET_KEY outside development
+    secret_key: str = "dev-only-change-me-not-for-production-use"
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
 
