@@ -1,15 +1,11 @@
 """Category model: groups skills by topic."""
 
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, String
+from sqlalchemy import DateTime, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
-
-if TYPE_CHECKING:
-    from app.models.skill import Skill
 
 
 def _utcnow() -> datetime:
@@ -19,14 +15,15 @@ def _utcnow() -> datetime:
 class Category(Base):
     __tablename__ = "categories"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str] = mapped_column(String(50), unique=True)
-    description: Mapped[str | None] = mapped_column(String(300))
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    description: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=_utcnow
+        DateTime(timezone=True), default=_utcnow, nullable=False
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=_utcnow, onupdate=_utcnow
+        DateTime(timezone=True), default=_utcnow, onupdate=_utcnow, nullable=False
     )
 
-    skills: Mapped[list["Skill"]] = relationship(back_populates="category")
+    skills = relationship("Skill", back_populates="category")
