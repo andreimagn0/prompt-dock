@@ -21,4 +21,5 @@ class User(Base):
     )
 
     # relationships 
-    skills = relationship("Skill", back_populates="user")
+    # COMMENTED OUT FOR NOW, WILL ADD LATER
+    # skills = relationship("Skill", back_populates="user")

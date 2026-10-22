@@ -1,7 +1,13 @@
-from fastapi import FastAPI
+from typing import Annotated
+from fastapi import APIRouter
+from sqlalchemy.orm import Session 
 
-app = FastAPI()
+from app.core.auth import verify_password
+from app.core.database import get_db
+from app.core.dependencies import get_current_user
+from app.models.user import User
+from app.schemas.user import UserPublic, UserResponse, UserUpdate
 
-@app.get("/users/{user_id}")
-async def read_user(user_id: int):
-    return {"user_id": user_id}
+router = APIRouter()
+
+
