@@ -1,0 +1,22 @@
+from datetime import datetime, timedelta, timezone
+import jwt
+from pwdlib import PasswordHash
+from .settings import settings
+
+password_hash = PasswordHash.recommended()
+
+def hash_password(password: str) -> str:
+    return password_hash.hash(password)
+
+def verify_password(password: str, hashed: str) -> bool:
+    return password_hash.verify(password, hashed)
+
+def create_access_token(user_id: int) -> str:
+    expire = datetime.now(timezone.utc) + timedelta(minutes=settings.access_token_expire_minutes)
+
+    encoded_jwt = jwt.encode(
+        {"sub": str(user_id), "exp": expire},
+        settings.secret_key, 
+        algorithm=settings.algorithm)
+
+    return encoded_jwt
