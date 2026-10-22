@@ -21,4 +21,4 @@ class User(Base):
     )
 
     # relationships 
-    skills = relationship("Skill", back_populates="user")
+    skills = relationship("Skill", back_populates="user", cascade="all, delete-orphan")
