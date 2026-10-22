@@ -19,6 +19,7 @@ def test_settings_use_development_defaults(monkeypatch) -> None:
     assert settings.database_url == "sqlite:///./prompt_dock.db"
     assert settings.algorithm == "HS256"
     assert settings.access_token_expire_minutes == 30
+    assert len(settings.secret_key.encode()) >= 32
 
 
 def test_environment_variables_override_defaults(monkeypatch) -> None:
