@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     secret_key: str = "dev-only-change-me-not-for-production-use"
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
+    allowed_origins: str = "http://localhost:3000"
 
 
 @lru_cache
