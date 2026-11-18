@@ -1,33 +1,150 @@
-import { useState, type SubmitEvent } from "react"
+import { useEffect, useState, type SubmitEvent } from "react"
+import { Link, useNavigate } from "react-router-dom"
 import { toast } from "sonner"
 import { useAuth } from "@/context/AuthContext"
 import { getErrorMessage } from "@/api/api"
 import type { User } from "@/api/auth"
+import { deleteMe, getUserSkills, updateMe } from "@/api/users"
+import { getSavedSkills, type SavedSkill } from "@/api/community"
+import type { SkillList } from "@/api/skills"
+import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { useNavigate } from "react-router-dom"
-import { deleteMe, updateMe } from "@/api/users"
-import { 
+import { SkillCard } from "@/components/skills/SkillCard"
+import { LoadingState } from "@/components/common/LoadingState"
+import { ErrorState } from "@/components/common/ErrorState"
+import { EmptyState } from "@/components/common/EmptyState"
+import {
     AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
     AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 
+type Tab = "profile" | "settings"
+
 export default function ProfilePage() {
-    const { user } = useAuth()
+    const { user, logout } = useAuth()
+    const navigate = useNavigate()
+    const [tab, setTab] = useState<Tab>("profile")
 
     if (!user) return null
 
+    function handleSignOut() {
+        navigate("/")
+        logout()
+    }
+
+    const menuClass = (active: boolean) =>
+        cn("justify-start text-xl font-bold md:text-2xl", active && "text-muted-foreground")
+
     return (
-        <div className="mx-auto flex max-w-sm flex-col gap-2">
-            <h1 className="text-2xl font-semibold">{user.username}</h1>
+        <div className="flex flex-col gap-8">
 
-            <p className="text-muted-foreground">{user.email}</p>
+            {/* Banner */}
+            <section className="flex flex-col gap-6 rounded-3xl bg-secondary p-6 md:p-10">
+                <Link to="/" className="self-start">← Home</Link>
 
-            <p className="text-sm text-muted-foreground">Joined {new Date(user.created_at).toLocaleDateString()}</p>
-            
-            <EditProfileForm user={user} />
-            <DeleteAccount />
+                <div className="flex flex-col items-center gap-4 md:flex-row">
+                    <div className="flex size-28 items-center justify-center rounded-full border bg-background text-5xl font-bold">
+                        {user.username[0].toUpperCase()}
+                    </div>
+
+                    <h1 className="text-4xl font-bold">@{user.username}</h1>
+                </div>
+            </section>
+
+            <div className="flex flex-col gap-8 md:flex-row">
+
+                {/* Menu */}
+                <nav className="flex justify-between md:w-44 md:flex-col md:justify-start" aria-label="Profile">
+                    <Button
+                        variant="ghost"
+                        className={menuClass(tab === "profile")}
+                        aria-current={tab === "profile"}
+                        onClick={() => setTab("profile")}
+                    >
+                        Profile
+                    </Button>
+
+                    <Button
+                        variant="ghost"
+                        className={menuClass(tab === "settings")}
+                        aria-current={tab === "settings"}
+                        onClick={() => setTab("settings")}
+                    >
+                        Settings
+                    </Button>
+
+                    <Button variant="ghost" className={menuClass(false)} onClick={handleSignOut}>
+                        Sign out
+                    </Button>
+                </nav>
+
+                {/* Content */}
+                <div className="flex-1">
+                    {tab === "profile" ? (
+                        <ProfileOverview userId={user.id} />
+                    ) : (
+                        <div className="flex max-w-md flex-col gap-8">
+                            <EditProfileForm user={user} />
+                            <DeleteAccount />
+                        </div>
+                    )}
+                </div>
+
+            </div>
+        </div>
+    )
+}
+
+function ProfileOverview({ userId }: { userId: number }) {
+    const [contributions, setContributions] = useState<SkillList | null>(null)
+    const [saved, setSaved] = useState<SavedSkill[] | null>(null)
+    const [error, setError] = useState("")
+
+    useEffect(() => {
+        Promise.all([getUserSkills(userId, { limit: 4 }), getSavedSkills()])
+            .then(([skills, savedSkills]) => {
+                setContributions(skills)
+                setSaved(savedSkills)
+            })
+            .catch((err) => setError(getErrorMessage(err)))
+    }, [userId])
+
+    if (error) return <ErrorState message={error} />
+    if (!contributions || !saved) return <LoadingState />
+
+    return (
+        <div className="grid gap-8 md:grid-cols-2">
+
+            <section className="flex flex-col gap-3">
+                <h2 className="text-xl">Contributions</h2>
+
+                {contributions.data.length === 0 ? (
+                    <EmptyState message="You haven't shared any skills yet." />
+                ) : (
+                    contributions.data.map((s) => <SkillCard key={s.id} skill={s} />)
+                )}
+
+                {contributions.total > contributions.data.length && (
+                    <Link to={`/users/${userId}`} className="text-primary">see all →</Link>
+                )}
+            </section>
+
+            <section className="flex flex-col gap-3">
+                <h2 className="text-xl">Saved</h2>
+
+                {saved.length === 0 ? (
+                    <EmptyState message="No saved skills yet." />
+                ) : (
+                    saved.slice(0, 4).map((s) => <SkillCard key={s.id} skill={s.skill} />)
+                )}
+
+                {saved.length > 4 && (
+                    <Link to="/saved" className="text-primary">see all →</Link>
+                )}
+            </section>
+
         </div>
     )
 }
