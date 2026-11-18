@@ -266,3 +266,35 @@ def test_user_skills_unknown_user_is_404(client: TestClient) -> None:
     response = client.get("/users/999/skills")
 
     assert response.status_code == 404
+
+def test_read_public_skill(client: TestClient, session: Session) -> None:
+    skill = make_skill(session, make_user(session), make_category(session))
+
+    response = client.get(f"/skills/{skill.id}")
+
+    assert response.status_code == 200
+    assert response.json()["title"] == "Summarize"
+
+
+def test_read_private_skill_as_owner(client: TestClient, session: Session) -> None:
+    owner = make_user(session)
+    skill = make_skill(session, owner, make_category(session), is_public=False)
+
+    response = client.get(f"/skills/{skill.id}", headers=auth(owner))
+
+    assert response.status_code == 200
+
+
+def test_read_private_skill_hidden_from_others(client: TestClient, session: Session) -> None:
+    owner = make_user(session)
+    other = make_user(session, "bob")
+    skill = make_skill(session, owner, make_category(session), is_public=False)
+
+    assert client.get(f"/skills/{skill.id}").status_code == 404
+    assert client.get(f"/skills/{skill.id}", headers=auth(other)).status_code == 404
+
+
+def test_read_unknown_skill_is_404(client: TestClient) -> None:
+    response = client.get("/skills/999")
+
+    assert response.status_code == 404
