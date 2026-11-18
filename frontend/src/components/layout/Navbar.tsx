@@ -1,25 +1,16 @@
 import { NavLink } from "react-router-dom"
-import { Menu } from "lucide-react"
+import { Link, Menu } from "lucide-react"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
-
-const links = [
-    { to: "/", label: "Home" },
-    { to: "/categories", label: "Categories" }, 
-    { to: "/saved", label: "Saved" },
-]
 
 function NavLinks() {
     return (
         <>
-            {links.map((l) => (
-                <NavLink 
-                    key={l.to} 
-                    to={l.to} 
-                    end 
-                    className={({ isActive }) => buttonVariants({ variant: isActive ? "secondary" : "ghost" })}>{l.label}
-                </NavLink>
-            ))}
+            <Link to="/" className={buttonVariants({ variant: "ghost" })}>Home</Link>
+
+            <Link to="/categories" className={buttonVariants({ variant: "ghost" })}>Categories</Link>
+
+            <Link to="/saved" className={buttonVariants({ variant: "ghost" })}>Saved</Link>
 
             <NavLink to="/login" className={buttonVariants({ variant: "outline" })}>Log in</NavLink>
 
