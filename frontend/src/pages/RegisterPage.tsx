@@ -6,7 +6,7 @@ import { register } from "@/api/auth"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-
+import { AuthShowcase } from "@/components/auth/AuthShowcase"
 
 
 export default function RegisterPage() {
@@ -44,62 +44,63 @@ export default function RegisterPage() {
     }
 
     return (
-        <form onSubmit={handleSubmit} className="mx-auto flex max-w-sm flex-col gap-4">
-            <h1 className="text-2xl font-semibold"> Sign up</h1>
+        <div className="grid flex-1 md:grid-cols-2">
+            <AuthShowcase className="md:order-last" />
 
-            <div className="flex flex-col gap-2">
-                <Label htmlFor="username">Username</Label>
-                <Input
-                    id="username"
-                    required minLength={3}
-                    maxLength={30}
-                    pattern="^[A-Za-z0-9_]+"
-                    title="Letters, numbers, and underscores only"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                />
-            </div>
+            <form onSubmit={handleSubmit} className="mx-auto flex w-full max-w-md flex-col justify-center gap-4 p-6 md:p-10">
+                <h1 className="text-4xl font-bold"> Join the community</h1>
 
-            <div className="flex flex-col gap-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                    id="email"
-                    type="email"
-                    required value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                />
-            </div>
+                    <Label htmlFor="username" className="sr-only">Username</Label>
+                    <Input
+                        id="username"
+                        placeholder="@username"
+                        required minLength={3}
+                        maxLength={30}
+                        pattern="^[A-Za-z0-9_]+"
+                        title="Letters, numbers, and underscores only"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                    />
 
-            <div className="flex flex-col gap-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                    id="password"
-                    type="password"
-                    required value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                />
-            </div>
-            <div className="flex flex-col gap-2">
-                <Label htmlFor="confirmPassword">Confirm Password</Label>
-                <Input
-                    id="confirmPassword"
-                    type="password"
-                    required value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                />
-            </div>
+                    <Label htmlFor="email" className="sr-only">Email</Label>
+                    <Input
+                        id="email"
+                        type="email"
+                        placeholder="email"
+                        required value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                    />
 
-            {error && (
-                <p className="text-sm text-destructive" role="alert">{error}</p>
-            )}
+                    <Label htmlFor="password" className="sr-only">Password</Label>
+                    <Input
+                        id="password"
+                        type="password"
+                        placeholder="password"
+                        required value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                    />
 
-            <Button type="submit" disabled={submitting}>
-                {submitting ? "Creating account..." : "Sign up"}
-            </Button>
+                    <Label htmlFor="confirmPassword" className="sr-only">Confirm Password</Label>
+                    <Input
+                        id="confirmPassword"
+                        type="password"
+                        placeholder="Confirm password"
+                        required value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                    />
 
-            <p className="text-sm text-muted-foreground">
-                Already have an account? <Link to="/login" className="underline">Log in</Link>
-            </p>
-        </form>
+                {error && (
+                    <p className="text-sm text-destructive" role="alert">{error}</p>
+                )}
+
+                <Button type="submit" disabled={submitting} className="h-12 text-lg">
+                    {submitting ? "Creating account..." : "Create Account"}
+                </Button>
+
+                <p className="font-bold">
+                    Already a member? <Link to="/login" viewTransition className="text-primary underline">Log in</Link>
+                </p>
+            </form>
+        </div>
     )
 }

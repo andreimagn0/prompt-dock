@@ -5,6 +5,7 @@ import { useAuth } from "@/context/AuthContext"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { AuthShowcase } from "@/components/auth/AuthShowcase"
 
 
 export default function LoginPage() {
@@ -32,31 +33,39 @@ export default function LoginPage() {
         }
     }
 
-    return ( 
-        <form onSubmit={handleSubmit} className="mx-auto flex max-w-sm flex-col gap-4">
-            <h1 className="text-2xl font-semibold"> Log in </h1>
+    return (
+        <div className="grid flex-1 md:grid-cols-2">
+            <AuthShowcase />
 
-            <div className="flex flex-col gap-2">
-                <Label htmlFor="identifier">Username or email</Label>
-                <Input id="identifier" required value={identifier} 
-                onChange={(e) => setIdentifier(e.target.value)} />
-            </div>
+            <form onSubmit={handleSubmit} className="mx-auto flex w-full max-w-md flex-col justify-center gap-4 p-6 md:p-10">
+                <h1 className="text-4xl font-bold">Welcome Back</h1>
 
-                <div className="flex flex-col gap-2">
-                <Label htmlFor="password">Password</Label>
-                <Input id="password" type="password" required value={password} 
-                onChange={(e) => setPassword(e.target.value)} />
-            </div>
+                <Label htmlFor="identifier" className="sr-only">Username or email</Label>
+                <Input 
+                    id="identifier" 
+                    placeholder="username or email" 
+                    required value={identifier} 
+                    onChange={(e) => setIdentifier(e.target.value)} />
 
-            {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
+                <Label htmlFor="password" className="sr-only">Password</Label>
+                <Input 
+                    id="password" 
+                    type="password" 
+                    placeholder="password" 
+                    required value={password}
+                    onChange={(e) => setPassword(e.target.value)} />
 
-            <Button type="submit" disabled={submitting}>
-                {submitting ? "Logging in..." : "Log in"}
-            </Button>
+                {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
 
-            <p className="text-sm text-muted-foreground">
-                No account? <Link to="/register" className="underline">Sign up</Link>
-            </p>
-        </form>
+                <Button type="submit" disabled={submitting} className="h-12 text-lg">
+                    {submitting ? "Logging in..." : "Log in"}
+                </Button>
+
+                <p className="font-bold">
+                    Not a member? 
+                    <Link to="/register" viewTransition className="text-primary underline">Sign up</Link>
+                </p>
+            </form>
+        </div>
     )
 }
