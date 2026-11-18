@@ -16,6 +16,7 @@ import NotFoundPage from "@/pages/NotFoundPage"
 import LoginPage from "@/pages/LoginPage"
 import RegisterPage from "@/pages/RegisterPage"
 import ProfilePage from "@/pages/ProfilePage"
+import PublicProfilePage from "@/pages/PublicProfilePage"
 
 
 const router = createBrowserRouter([
@@ -26,6 +27,7 @@ const router = createBrowserRouter([
       { path: "/login", element: <LoginPage /> }, 
       { path: "/register", element: <RegisterPage /> },
       { path: "/profile", element: <ProfilePage /> },
+      { path: "/users/:userId", element: <PublicProfilePage /> },
 
       // Protected routes
       { 

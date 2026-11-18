@@ -1,7 +1,7 @@
 import api from "./api"
 import type { User } from "./auth"
 
-export type PublicUser = { id: number; username: string; createdAt: string }
+export type PublicUser = { id: number; username: string; created_at: string }
 
 export type UpdateUserData = {
     current_password: string
