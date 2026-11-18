@@ -15,6 +15,7 @@ import HomePage from "@/pages/HomePage"
 import NotFoundPage from "@/pages/NotFoundPage"
 import LoginPage from "@/pages/LoginPage"
 import RegisterPage from "@/pages/RegisterPage"
+import ProfilePage from "@/pages/ProfilePage"
 
 
 const router = createBrowserRouter([
@@ -24,6 +25,7 @@ const router = createBrowserRouter([
       { path: "/", element: <HomePage /> },
       { path: "/login", element: <LoginPage /> }, 
       { path: "/register", element: <RegisterPage /> },
+      { path: "/profile", element: <ProfilePage /> },
 
       // Protected routes
       { 
