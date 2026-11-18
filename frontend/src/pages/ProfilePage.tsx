@@ -1,0 +1,137 @@
+import { useState, type SubmitEvent } from "react"
+import { toast } from "sonner"
+import { useAuth } from "@/context/AuthContext"
+import { getErrorMessage } from "@/api/api"
+import type { User } from "@/api/auth"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { useNavigate } from "react-router-dom"
+import { deleteMe, updateMe } from "@/api/users"
+import { 
+    AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+    AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+
+export default function ProfilePage() {
+    const { user } = useAuth()
+
+    if (!user) return null
+
+    return (
+        <div className="mx-auto flex max-w-sm flex-col gap-2">
+            <h1 className="text-2xl font-semibold">{user.username}</h1>
+
+            <p className="text-muted-foreground">{user.email}</p>
+
+            <p className="text-sm text-muted-foreground">Joined {new Date(user.created_at).toLocaleDateString()}</p>
+            
+            <EditProfileForm user={user} />
+            <DeleteAccount />
+        </div>
+    )
+}
+
+function EditProfileForm({ user }: { user: User }) {
+    const { setUser } = useAuth()
+
+    const [username, setUsername] = useState(user.username)
+    const [email, setEmail] = useState(user.email)
+    const [currentPassword, setCurrentPassword] = useState("")
+    const [error, setError] = useState("")
+    const [submitting, setSubmitting] = useState(false)
+
+    async function handleSubmit(e: SubmitEvent) {
+        e.preventDefault()
+        setError("")
+        setSubmitting(true)
+
+        try { 
+            const updated = await updateMe({ current_password: currentPassword, username, email })
+            setUser(updated)
+            setCurrentPassword("")
+            toast.success("Profile updated")
+        } catch (err) {
+            setError(getErrorMessage(err))
+        } finally {
+            setSubmitting(false)
+        }
+    }
+
+    return (
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <h2 className="text-lg font-semibold">Edit profile</h2>
+
+        <div className="flex flex-col gap-2">
+            <Label htmlFor="username">Username</Label>
+            <Input id="username" required minLength={3} maxLength={30}
+            pattern="[A-Za-z0-9_]+" title="Letters, numbers, and underscores only"
+            value={username} onChange={(e) => setUsername(e.target.value)} />
+        </div>
+
+        <div className="flex flex-col gap-2">
+            <Label htmlFor="email">Email</Label>
+            <Input id="email" type="email" required value={email}
+            onChange={(e) => setEmail(e.target.value)} />
+        </div>
+
+        <div className="flex flex-col gap-2">
+            <Label htmlFor="currentPassword">Current password</Label>
+            <Input id="currentPassword" type="password" required value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)} />
+        </div>
+
+        {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
+
+        <Button type="submit" disabled={submitting}>
+            {submitting ? "Saving..." : "Save changes"}
+        </Button>
+        </form>
+    )
+}
+
+function DeleteAccount() {
+    const { logout } = useAuth()
+    const navigate = useNavigate()
+    const [deleting, setDeleting] = useState(false)
+
+    async function handleDelete() {
+        setDeleting(true)
+        try {
+            await deleteMe()
+            navigate("/")
+            logout()
+            toast.success("Account deleted")
+        } catch (err) {
+            toast.error(getErrorMessage(err))
+        } finally {
+            setDeleting(false)
+        }
+    }
+
+    return (
+        <AlertDialog>
+            <AlertDialogTrigger render={<Button variant="destructive" />}>
+                Delete account
+            </AlertDialogTrigger>
+
+            <AlertDialogContent>
+
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Delete your account?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        This action cannot be undone. This will permanently delete your account and remove all your data.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction variant="destructive" onClick={handleDelete} disabled={deleting}>
+                        {deleting ? "Deleting..." : "Delete"}
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+
+            </AlertDialogContent>
+        </AlertDialog>
+    )
+}
