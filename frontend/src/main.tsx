@@ -17,32 +17,32 @@ import LoginPage from "@/pages/LoginPage"
 import RegisterPage from "@/pages/RegisterPage"
 import ProfilePage from "@/pages/ProfilePage"
 import PublicProfilePage from "@/pages/PublicProfilePage"
+import { Container } from "@/components/layout/Container"
 
 
 const router = createBrowserRouter([
   {
     element: <AppShell />,
     children: [
-      { path: "/", element: <HomePage /> },
       { path: "/login", element: <LoginPage /> }, 
       { path: "/register", element: <RegisterPage /> },
-      { path: "/profile", element: <ProfilePage /> },
-      { path: "/users/:userId", element: <PublicProfilePage /> },
 
-      // Protected routes
-      { 
-        element: <ProtectedRoute />, 
+      {
+        element: <Container />,
         children: [
-          { path: "/profile", 
-            element: <h1>Profile (placeholder)</h1>
+          { path: "/", element: <HomePage /> },
+          { path: "/users/:userId", element: <PublicProfilePage /> },
+          {
+            element: <ProtectedRoute />,
+            children: [
+              { path: "/profile", element: <ProfilePage /> },
+            ]
           },
+          { path: "*", element: <NotFoundPage /> },
         ]
-      },
-
-      { path: "*", element: <NotFoundPage /> },
-
-    ],
-  },
+      }
+    ]
+  }
 ])
 
 createRoot(document.getElementById("root")!).render(

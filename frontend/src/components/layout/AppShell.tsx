@@ -6,7 +6,7 @@ export function AppShell() {
   return (
     <div className="flex min-h-svh flex-col">
       <Navbar />
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">
+      <main className="flex flex-1 flex-col">
         <Outlet />
       </main>
       <Toaster />
