@@ -236,3 +236,33 @@ def test_delete_requires_login(client: TestClient, session: Session) -> None:
     response = client.delete(f"/skills/{skill.id}")
 
     assert response.status_code == 401
+
+def test_user_skills_lists_only_their_public_skills(client: TestClient, session: Session) -> None:
+    owner = make_user(session)
+    other = make_user(session, "bob")
+    category = make_category(session)
+    make_skill(session, owner, category)
+    make_skill(session, owner, category, is_public=False)
+    make_skill(session, other, category)
+
+    response = client.get(f"/users/{owner.id}/skills")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 1
+    assert [skill["user_id"] for skill in body["data"]] == [owner.id]
+
+
+def test_user_skills_empty_for_user_without_skills(client: TestClient, session: Session) -> None:
+    user = make_user(session)
+
+    response = client.get(f"/users/{user.id}/skills")
+
+    assert response.status_code == 200
+    assert response.json()["data"] == []
+
+
+def test_user_skills_unknown_user_is_404(client: TestClient) -> None:
+    response = client.get("/users/999/skills")
+
+    assert response.status_code == 404
