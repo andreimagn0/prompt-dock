@@ -1,5 +1,5 @@
 import { useState, type SubmitEvent} from "react"
-import { Link, useNavigate } from "react-router-dom"
+import { Link, Navigate, useNavigate } from "react-router-dom"
 import { getErrorMessage } from "@/api/api"
 import { useAuth } from "@/context/AuthContext"
 import { register } from "@/api/auth"
@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 
 
 export default function RegisterPage() {
-    const { login } = useAuth()
+    const { user, login } = useAuth()
     const navigate = useNavigate()
 
     const [username, setUsername] = useState("")
@@ -19,6 +19,8 @@ export default function RegisterPage() {
     const [confirmPassword, setConfirmPassword] = useState("")
     const [error, setError] = useState("")
     const [submitting, setSubmitting] = useState(false)
+
+    if (user) return <Navigate to="/" replace />
 
     async function handleSubmit(e: SubmitEvent) {
         e.preventDefault()
