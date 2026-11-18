@@ -14,6 +14,7 @@ import { AppShell } from "@/components/layout/AppShell"
 import HomePage from "@/pages/HomePage"
 import NotFoundPage from "@/pages/NotFoundPage"
 import LoginPage from "@/pages/LoginPage"
+import RegisterPage from "@/pages/RegisterPage"
 
 
 const router = createBrowserRouter([
@@ -22,6 +23,7 @@ const router = createBrowserRouter([
     children: [
       { path: "/", element: <HomePage /> },
       { path: "/login", element: <LoginPage /> }, 
+      { path: "/register", element: <RegisterPage /> },
 
       // Protected routes
       { 
