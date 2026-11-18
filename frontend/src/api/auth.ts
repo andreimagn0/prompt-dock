@@ -4,7 +4,7 @@ export type User = {
     id: number; 
     username: string;
     email: string;
-    created_at: boolean;
+    created_at: string;
 }
 
 export type Token = {
@@ -13,9 +13,9 @@ export type Token = {
 }
 
 export const register = (data: {username: string; email: string; password: string}) => 
-    api.post("/auth/register", data).then((r) => r.data)
+    api.post<User>("/auth/register", data).then((r) => r.data)
 
 export const login = (data: {identifier: string; password: string}) =>
     api.post<Token>("/auth/login", data).then((r) => r.data)
 
-export const getMe = () => api.get<User>("/auth/me").then((r) => r.data)
+export const getMe = () => api.get<User>("/users/me").then((r) => r.data)
