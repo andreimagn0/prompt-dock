@@ -1,8 +1,8 @@
 """Request and response schemas for community features."""
 
 from datetime import datetime
-
 from pydantic import BaseModel, ConfigDict, Field
+from app.schemas.skill import SkillResponse
 
 
 class SkillVersionCreate(BaseModel):
@@ -85,3 +85,4 @@ class SavedSkillResponse(BaseModel):
     user_id: int
     skill_id: int
     created_at: datetime
+    skill: SkillResponse
