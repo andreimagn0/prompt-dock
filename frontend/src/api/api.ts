@@ -2,11 +2,13 @@ import axios from "axios"
 
 export const TOKEN_KEY = "token"
 
-const api = axios.create({ baseURL: import.meta.env.VITE_API_URL })
+const api = axios.create({ baseURL: process.env.NEXT_PUBLIC_API_URL })
 
-// Attach the aved token to every request
+// Attach the saved token to every request. localStorage only exists in the
+// browser, so skip it when this module runs during server rendering.
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem(TOKEN_KEY)
+  const token =
+    typeof window !== "undefined" ? localStorage.getItem(TOKEN_KEY) : null
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
