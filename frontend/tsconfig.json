@@ -9,6 +9,7 @@
     "module": "esnext",
     "moduleResolution": "bundler",
     "jsx": "react-jsx",
+    "types": ["jest"],
     "allowJs": false,
     "skipLibCheck": true,
     "noEmit": true,
