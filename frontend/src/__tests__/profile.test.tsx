@@ -2,11 +2,13 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { toast } from "sonner"
 import { AuthProvider } from "@/context/AuthContext"
 import { getMe } from "@/api/auth"
-import { updateMe } from "@/api/users"
+import { updateMe, deleteMe, getUser, getUserSkills } from "@/api/users"
 import ProfilePage from "@/app/(main)/(protected)/profile/page"
+import PublicProfilePage from "@/app/(main)/users/[userId]/page"
 
 jest.mock("next/navigation", () => ({
     useRouter: () => ({ replace: jest.fn() }),
+    useParams: () => ({ userId: "1" }),
 }))
 
 jest.mock("sonner", () => ({
@@ -21,6 +23,7 @@ jest.mock("@/api/auth", () => ({
 jest.mock("@/api/users", () => ({
     updateMe: jest.fn(),
     deleteMe: jest.fn(),
+    getUser: jest.fn(),
     getUserSkills: jest.fn(() => Promise.resolve({ data: [], page: 1, limit: 4, total: 0 })),
 }))
 
@@ -74,5 +77,56 @@ describe("ProfilePage settings", () => {
 
         expect(await screen.findByRole("alert")).toBeTruthy()
         expect(toast.success).not.toHaveBeenCalled()
+    })
+})
+
+describe("ProfilePage", () => {
+    it("deletes the account after confirming", async () => {
+        jest.mocked(deleteMe).mockResolvedValue({} as never)
+        await openSettings()
+
+        fireEvent.click(screen.getByRole("button", { name: "Delete account" }))
+        fireEvent.click(await screen.findByRole("button", { name: "Delete" }))
+
+        await waitFor(() => expect(deleteMe).toHaveBeenCalled())
+        expect(localStorage.getItem("token")).toBeNull()
+        expect(toast.success).toHaveBeenCalledWith("Account deleted")
+    })
+
+    it("shows an error when the profile sections fail to load", async () => {
+        jest.mocked(getUserSkills).mockRejectedValueOnce(new Error("Server down"))
+        localStorage.setItem("token", "abc")
+        jest.mocked(getMe).mockResolvedValue(alice)
+
+        render(<AuthProvider><ProfilePage /></AuthProvider>)
+
+        expect(await screen.findByRole("alert")).toBeTruthy()
+    })
+})
+
+describe("PublicProfilePage", () => {
+    it("shows the user and their skills", async () => {
+        jest.mocked(getUser).mockResolvedValue({ id: 1, username: "alice", created_at: "2026-01-01" })
+        jest.mocked(getUserSkills).mockResolvedValueOnce({
+            data: [{
+                id: 1, title: "Budget my month", description: "Builds a budget", content: "...",
+                current_version: 1, parent_skill_id: null, user_id: 1, category_id: 1,
+                is_public: true, average_rating: null, created_at: "2026-01-01", updated_at: "2026-01-01",
+            }],
+            page: 1, limit: 100, total: 1,
+        })
+
+        render(<PublicProfilePage />)
+
+        expect(await screen.findByText("@alice")).toBeTruthy()
+        expect(screen.getByText("Budget my month")).toBeTruthy()
+    })
+
+    it("shows an error for a user that does not exist", async () => {
+        jest.mocked(getUser).mockRejectedValue(new Error("User not found"))
+
+        render(<PublicProfilePage />)
+
+        expect(await screen.findByRole("alert")).toBeTruthy()
     })
 })

@@ -190,6 +190,37 @@ def test_save_and_unsave_skill(client: TestClient, session: Session) -> None:
     )
     assert unsaved.status_code == 204
 
+def test_cannot_save_another_users_private_skill(
+        client: TestClient, session: Session
+) -> None: 
+    owner = make_user(session)
+    other = make_user(session, "bob")
+    skill = make_skill(session, owner, make_category(session), is_public=False)
+
+    response = client.post(
+        f"/community/skills/{skill.id}/save", headers=auth(other)
+    )
+
+    assert response.status_code == 404
+
+def test_saved_skill_hidden_after_it_becomes_private(
+    client: TestClient, session: Session
+) -> None: 
+    owner = make_user(session)
+    other = make_user(session, "bob")
+    skill = make_skill(session, owner, make_category(session))
+    client.post(
+        f"/community/skills/{skill.id}/save", headers=auth(other)
+    )
+
+    skill.is_public = False
+    session.commit()
+
+    response = client.get("/community/saved-skills", headers=auth(other))
+
+    assert response.status_code == 200
+    assert response.json() == []
+
 
 def test_create_and_list_skill_version(
     client: TestClient, session: Session
@@ -251,3 +282,54 @@ def test_fork_private_skill_is_forbidden(
     )
 
     assert response.status_code == 403
+
+# deleting an account tests: 
+
+def test_delete_account_with_comments_ratings_and_saves(
+    client: TestClient, session: Session
+) -> None:
+    owner = make_user(session, "andrei")
+    other = make_user(session, "fadi")
+    skill = make_skill(session, owner, make_category(session))
+
+    client.post(
+        f"/community/skills/{skill.id}/comments", 
+        json={"content": "Nice"}, 
+        headers=auth(other)
+    )
+
+    client.post(
+        f"/community/skills/{skill.id}/ratings", 
+        json={"score": 5}, 
+        headers=auth(other)
+    )
+
+    client.post(
+        f"/community/skills/{skill.id}/save", 
+        headers=auth(other)
+    )
+
+    response = client.delete("/users/me", headers=auth(other))
+
+    assert response.status_code == 200
+    assert client.get(f"/community/skills/{skill.id}/comments").json() == []
+
+
+def test_delete_account_whose_skill_was_forked(
+    client: TestClient, session: Session
+) -> None:
+    owner = make_user(session, "andrei")
+    other = make_user(session, "fadi")
+    category = make_category(session)
+    original = make_skill(session, owner, category)
+    forked = make_skill(session, other, category)
+
+    client.post(
+        "/community/forks", 
+        json={"original_skill_id": 
+        original.id, "forked_skill_id": 
+        forked.id}, headers=auth(other)
+    )
+
+    assert client.delete("/users/me", headers=auth(owner)).status_code == 200
+    assert client.delete("/users/me", headers=auth(other)).status_code == 200

@@ -145,9 +145,6 @@ function ProfileOverview({ userId }: { userId: number }) {
                     saved.slice(0, 4).map((s) => <SkillCard key={s.id} skill={s.skill} categoryName={categoryName(s.skill.category_id)} />)
                 )}
 
-                {saved.length > 4 && (
-                    <Link href="/saved" className="text-primary">see all →</Link>
-                )}
             </section>
 
         </div>

@@ -42,10 +42,6 @@ function NavLinks() {
 
       {user ? (
           <>
-            <NavLink href="/saved" className={buttonVariants({ variant: "ghost" })}>
-              Saved
-            </NavLink>
-
             <NavLink href="/profile" className={buttonVariants({ variant: "ghost" })}>
               {user.username}
             </NavLink>

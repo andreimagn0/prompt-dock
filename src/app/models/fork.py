@@ -34,6 +34,10 @@ class Fork(Base):
         nullable=False,
     )
 
-    original_skill = relationship("Skill", foreign_keys=[original_skill_id])
-    forked_skill = relationship("Skill", foreign_keys=[forked_skill_id])
+    original_skill = relationship(
+        "Skill", foreign_keys=[original_skill_id], back_populates="forks_of_this"
+    )
+    forked_skill = relationship(
+        "Skill", foreign_keys=[forked_skill_id], back_populates="fork_record"
+    )
     user = relationship("User", back_populates="forks")

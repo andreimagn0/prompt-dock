@@ -73,7 +73,12 @@ class CommunityService:
         )
 
     def save_skill(self, skill_id: int, user_id: int):
-        self._require_skill(skill_id)
+        skill = self._require_skill(skill_id)
+
+        # treat other people's private skills as missing,
+        # like GET /skills/{id}
+        if not skill.is_public and skill.user_id != user_id: 
+            raise HTTPException(status_code=404, detail="Skill not found.")
 
         if self.repo.get_saved_skill(skill_id, user_id):
             raise HTTPException(

@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { AuthProvider } from "@/context/AuthContext"
 import { getMe, login, register } from "@/api/auth"
+import { Navbar } from "@/components/layout/Navbar"
 import ProtectedLayout from "@/app/(main)/(protected)/layout"
 import LoginPage from "@/app/(auth)/login/page"
 import RegisterPage from "@/app/(auth)/register/page"
@@ -9,6 +10,7 @@ const mockReplace = jest.fn()
 
 jest.mock("next/navigation", () => ({
     useRouter: () => ({ replace: mockReplace }),
+    usePathname: () => "/",
 }))
 
 jest.mock("@/api/auth", () => ({
@@ -34,6 +36,29 @@ function renderWithAuth(page: React.ReactNode) {
 
 beforeEach(() => {
     jest.clearAllMocks()
+})
+
+describe("AuthProvider", () => {
+    it("clears a token the backend rejects", async () => {
+        localStorage.setItem("token", "expired")
+        jest.mocked(getMe).mockRejectedValue(new Error("Invalid token"))
+
+        renderWithAuth(<Navbar />)
+
+        expect(await screen.findByRole("link", { name: "Log in" })).toBeTruthy()
+        expect(localStorage.getItem("token")).toBeNull()
+    })
+
+    it("logs out and removes the token", async () => {
+        localStorage.setItem("token", "abc")
+        jest.mocked(getMe).mockResolvedValue(alice)
+        renderWithAuth(<Navbar />)
+
+        fireEvent.click(await screen.findByRole("button", { name: "Logout" }))
+
+        expect(await screen.findByRole("link", { name: "Log in" })).toBeTruthy()
+        expect(localStorage.getItem("token")).toBeNull()
+    })
 })
 
 describe("ProtectedLayout", () => {
@@ -84,6 +109,24 @@ describe("LoginPage", () => {
 })
 
 describe("RegisterPage", () => {
+
+    it("creates the account, logs in, and goes home", async () => {
+        jest.mocked(register).mockResolvedValue(alice)
+        jest.mocked(login).mockResolvedValue({ access_token: "abc", token_type: "bearer" })
+        jest.mocked(getMe).mockResolvedValue(alice)
+        renderWithAuth(<RegisterPage />)
+
+        fireEvent.change(screen.getByLabelText("Username"), { target: { value: "alice" } })
+        fireEvent.change(screen.getByLabelText("Email"), { target: { value: "alice@example.com" } })
+        fireEvent.change(screen.getByLabelText("Password"), { target: { value: "password123" } })
+        fireEvent.change(screen.getByLabelText("Confirm Password"), { target: { value: "password123" } })
+        fireEvent.click(screen.getByRole("button", { name: "Create Account" }))
+
+        await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/"))
+        expect(register).toHaveBeenCalledWith({ username: "alice", email: "alice@example.com", password: "password123" })
+        expect(localStorage.getItem("token")).toBe("abc")
+    })
+
     it("stops when the passwords do not match", async () => {
         renderWithAuth(<RegisterPage />)
 
