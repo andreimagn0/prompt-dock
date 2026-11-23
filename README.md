@@ -4,7 +4,7 @@ Prompt Dock is a website where users can create, discover, save, rate, and share
 
 The backend uses FastAPI, SQLAlchemy, SQLite, Pydantic, JWT authentication, password hashing, and pytest.
 
-The frontend uses React, TypeScript, Vite, React Router, Axios, Tailwind CSS, and ShadCN UI.
+The frontend uses Next.js (App Router), React, TypeScript, Axios, Tailwind CSS, ShadCN UI, Jest, and React Testing Library.
 
 ## Setup
 
@@ -31,7 +31,7 @@ cp .env.example .env
 
 Open `.env` and replace the placeholder `SECRET_KEY` with a secure secret. Do not commit `.env` to GitHub.
 
-Make sure `ALLOWED_ORIGINS` in `.env` includes `http://localhost:5173`. Otherwise the browser blocks requests from the frontend.
+Make sure `ALLOWED_ORIGINS` in `.env` includes `http://localhost:3000`. Otherwise the browser blocks requests from the frontend.
 
 ## Run the Backend
 
@@ -82,7 +82,7 @@ npm install
 Create a local environment file:
 
 ```bash
-cp .env.example .env
+cp .env.example .env.local
 ```
 
 Start the frontend with:
@@ -94,7 +94,7 @@ npm run dev
 The frontend runs at:
 
 ```text
-http://localhost:5173
+http://localhost:3000
 ```
 
 The backend needs to be running at the same time.
@@ -108,6 +108,14 @@ uv run pytest
 ```
 
 The tests cover authentication, users, categories, skills, community features, database behavior, repositories, schemas, and settings.
+
+Run the frontend tests from the `frontend/` folder with:
+
+```bash
+npm test
+```
+
+The frontend tests use Jest and React Testing Library and live in `frontend/src/__tests__/`.
 
 ## Main Features
 
@@ -159,24 +167,31 @@ The frontend lives in `frontend/src/`:
 
 ```text
 frontend/src/
+├── __tests__/
 ├── api/
+├── app/
+│   ├── (auth)/
+│   ├── (main)/
+│   │   └── (protected)/
+│   └── layout.tsx
 ├── components/
-├── context/
-├── pages/
-├── routes/
-└── main.tsx
+└── context/
 ```
 
+- `__tests__`: Frontend tests
 - `api`: Axios client and one file per area (`auth.ts`, `users.ts`, `skills.ts`, `categories.ts`, `community.ts`)
+- `app`: Pages. Each folder is a URL, and each page file is named `page.tsx`
+- `app/(auth)`: Full-width pages (login and sign up)
+- `app/(main)`: Pages inside the centered container
+- `app/(main)/(protected)`: Pages that need a login
 - `components`: Shared UI. `ui/` holds the ShadCN components and `layout/` holds the navbar and app shell
 - `context`: Login state (`AuthContext`)
-- `pages`: One file per page
-- `routes`: Route guards such as `ProtectedRoute`
-- `main.tsx`: The list of all frontend routes
+
+Folders in parentheses are route groups. They share a layout but do not appear in the URL.
 
 To call the backend, add a function to the matching file in `api/` and import `api` from `./api`. It adds the login token automatically. Use `getErrorMessage(error)` to show API errors to users.
 
-To add a page, create it in `pages/` and add one line to the router in `main.tsx`. Pages that need a login go inside the `ProtectedRoute` group.
+To add a page, create a folder in `app/` with a `page.tsx` inside it. Pages that need a login go inside `(main)/(protected)/`. Pages that use state or hooks need `"use client"` as their first line.
 
 ## Database
 
