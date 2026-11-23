@@ -2,11 +2,22 @@ import axios from "axios"
 
 export const TOKEN_KEY = "token"
 
-const api = axios.create({ baseURL: import.meta.env.VITE_API_URL })
+const api = axios.create({ baseURL: process.env.NEXT_PUBLIC_API_URL })
 
-// Attach the aved token to every request
+// Attach the saved token to every request. localStorage only exists in the
+// browser, so skip it when this module runs during server rendering.
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem(TOKEN_KEY)
+  // Without a base URL, relative paths like "/categories" hit the Next.js
+  // server and come back as HTML pages instead of JSON. Fail the request so
+  // pages show their error state rather than crashing on the wrong shape.
+  if (!config.baseURL) {
+    throw new Error(
+      "NEXT_PUBLIC_API_URL is not set. Copy .env.example to .env.local and restart the dev server."
+    )
+  }
+
+  const token =
+    typeof window !== "undefined" ? localStorage.getItem(TOKEN_KEY) : null
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
@@ -22,6 +33,10 @@ export function getErrorMessage(error: unknown): string {
   }
   return "Something went wrong."
 
+}
+
+export function isNotFoundError(error: unknown): boolean {
+  return axios.isAxiosError(error) && error.response?.status === 404
 }
 
 export default api
