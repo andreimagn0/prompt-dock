@@ -1,3 +1,4 @@
+import Link from "next/link"
 import { StarIcon } from "lucide-react"
 import type { Skill } from "@/api/skills"
 import { Badge } from "@/components/ui/badge"
@@ -14,13 +15,22 @@ type Props = {
   categoryName?: string
 }
 
-// TODO(FE #9): link the card to the skill detail page once that route exists
+// The title link stretches over the whole card (after:inset-0), so the card is
+// clickable but keyboard and screen reader users get one short link: the title.
+// Any future buttons on the card need `relative z-10` to sit above it.
 export function SkillCard({ skill, categoryName }: Props) {
   return (
-    <Card className="h-full">
+    <Card className="relative h-full transition-colors hover:bg-muted/50 has-[a:focus-visible]:ring-3 has-[a:focus-visible]:ring-ring/50">
       <CardHeader>
         <CardTitle>
-          <h2>{skill.title}</h2>
+          <h2>
+            <Link
+              href={`/skills/${skill.id}`}
+              className="outline-none after:absolute after:inset-0"
+            >
+              {skill.title}
+            </Link>
+          </h2>
         </CardTitle>
         <CardDescription className="line-clamp-3">
           {skill.description}

@@ -57,3 +57,13 @@ export const getSkills = (
       signal: options.signal,
     })
     .then((r) => r.data)
+
+// GET /skills/{id}. The shared client adds the JWT when one is saved, so owners
+// can load their private skills; everyone else gets a 404 for those.
+export const getSkill = (
+  skillId: number,
+  options: { signal?: AbortSignal } = {}
+) =>
+  api
+    .get<Skill>(`/skills/${skillId}`, { signal: options.signal })
+    .then((r) => r.data)
