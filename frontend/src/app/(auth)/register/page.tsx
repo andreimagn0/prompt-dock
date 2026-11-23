@@ -1,7 +1,10 @@
-import { useState, type SubmitEvent} from "react"
-import { Link, Navigate, useNavigate } from "react-router-dom"
+"use client"
+
+import { useEffect, useState, type SubmitEvent} from "react"
+import Link from "next/link"
 import { getErrorMessage } from "@/api/api"
 import { useAuth } from "@/context/AuthContext"
+import { useRouter } from "next/navigation"
 import { register } from "@/api/auth"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,7 +14,7 @@ import { AuthShowcase } from "@/components/auth/AuthShowcase"
 
 export default function RegisterPage() {
     const { user, login } = useAuth()
-    const navigate = useNavigate()
+    const router = useRouter()
 
     const [username, setUsername] = useState("")
     const [email, setEmail] = useState("")
@@ -20,7 +23,9 @@ export default function RegisterPage() {
     const [error, setError] = useState("")
     const [submitting, setSubmitting] = useState(false)
 
-    if (user) return <Navigate to="/" replace />
+    useEffect(() => {
+        if (user) router.replace("/")
+    }, [user, router])
 
     async function handleSubmit(e: SubmitEvent) {
         e.preventDefault()
@@ -35,7 +40,6 @@ export default function RegisterPage() {
         try {
             await register({ username, email, password })
             await login(email, password)
-            navigate("/")
         } catch (err) {
             setError(getErrorMessage(err))
         } finally {
@@ -98,7 +102,8 @@ export default function RegisterPage() {
                 </Button>
 
                 <p className="font-bold">
-                    Already a member? <Link to="/login" viewTransition className="text-primary underline">Log in</Link>
+                    Already a member?{" "}
+                    <Link href="/login" className="text-primary underline">Log in</Link>
                 </p>
             </form>
         </div>

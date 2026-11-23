@@ -1,5 +1,8 @@
-import { useState, type SubmitEvent} from "react"
-import { Link, Navigate, useNavigate } from "react-router-dom"
+"use client"
+
+import { useEffect, useState, type SubmitEvent} from "react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { getErrorMessage } from "@/api/api"
 import { useAuth } from "@/context/AuthContext"
 import { Button } from "@/components/ui/button"
@@ -10,14 +13,17 @@ import { AuthShowcase } from "@/components/auth/AuthShowcase"
 
 export default function LoginPage() {
     const { user, login } = useAuth()
-    const navigate = useNavigate()
+    const router = useRouter()
 
     const [identifier, setIdentifier] = useState("")
     const [password, setPassword] = useState("")
     const [error, setError] = useState("")
     const [submitting, setSubmitting] = useState(false)
 
-    if (user) return <Navigate to="/" replace />
+    // Logged-in users don't need this page (this also runs right after a successful login)
+    useEffect(() => {
+        if (user) router.replace("/")
+    }, [user, router])
 
     async function handleSubmit(e: SubmitEvent) {
         e.preventDefault()
@@ -25,7 +31,6 @@ export default function LoginPage() {
         setSubmitting(true)
         try {
             await login(identifier, password)
-            navigate("/")
         } catch (err) {
             setError(getErrorMessage(err))
         } finally {
@@ -62,8 +67,8 @@ export default function LoginPage() {
                 </Button>
 
                 <p className="font-bold">
-                    Not a member? 
-                    <Link to="/register" viewTransition className="text-primary underline">Sign up</Link>
+                    Not a member?{" "}
+                    <Link href="/register" className="text-primary underline">Sign up</Link>
                 </p>
             </form>
         </div>

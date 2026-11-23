@@ -1,3 +1,5 @@
+"use client"
+
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
 import { getMe, login as loginRequest, type User } from '@/api/auth'
 import { TOKEN_KEY } from '@/api/api'
@@ -14,15 +16,14 @@ const AuthContext = createContext<AuthContextType | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null)
-    const [loading, setLoading] = useState(() => !!localStorage.getItem(TOKEN_KEY))
+    const [loading, setLoading] = useState(true)
 
     // On page load if a token is saved, find out who it belongs to
     useEffect(() => {
-        if (!localStorage.getItem(TOKEN_KEY)) {
-            return
-        }
-
-        getMe()
+        const token = localStorage.getItem(TOKEN_KEY)
+        const request = token ? getMe() : Promise.resolve(null)
+        
+        request
             .then(setUser)
             .catch(() => localStorage.removeItem(TOKEN_KEY)) // token expired or invalid
             .finally(() => setLoading(false))

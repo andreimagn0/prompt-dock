@@ -1,5 +1,7 @@
+"use client"
+
 import { useEffect, useState, type SubmitEvent } from "react"
-import { Link, useNavigate } from "react-router-dom"
+import Link from "next/link"
 import { toast } from "sonner"
 import { useAuth } from "@/context/AuthContext"
 import { getErrorMessage } from "@/api/api"
@@ -7,6 +9,7 @@ import type { User } from "@/api/auth"
 import { deleteMe, getUserSkills, updateMe } from "@/api/users"
 import { getSavedSkills, type SavedSkill } from "@/api/community"
 import type { SkillList } from "@/api/skills"
+import { getCategories, type Category } from "@/api/categories"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -24,13 +27,11 @@ type Tab = "profile" | "settings"
 
 export default function ProfilePage() {
     const { user, logout } = useAuth()
-    const navigate = useNavigate()
     const [tab, setTab] = useState<Tab>("profile")
 
     if (!user) return null
 
     function handleSignOut() {
-        navigate("/")
         logout()
     }
 
@@ -42,7 +43,7 @@ export default function ProfilePage() {
 
             {/* Banner */}
             <section className="flex flex-col gap-6 rounded-3xl bg-secondary p-6 md:p-10">
-                <Link to="/" className="self-start">← Home</Link>
+                <Link href="/" className="self-start">← Home</Link>
 
                 <div className="flex flex-col items-center gap-4 md:flex-row">
                     <div className="flex size-28 items-center justify-center rounded-full border bg-background text-5xl font-bold">
@@ -100,19 +101,23 @@ export default function ProfilePage() {
 function ProfileOverview({ userId }: { userId: number }) {
     const [contributions, setContributions] = useState<SkillList | null>(null)
     const [saved, setSaved] = useState<SavedSkill[] | null>(null)
+    const [categories, setCategories] = useState<Category[]>([])
     const [error, setError] = useState("")
 
     useEffect(() => {
-        Promise.all([getUserSkills(userId, { limit: 4 }), getSavedSkills()])
-            .then(([skills, savedSkills]) => {
+        Promise.all([getUserSkills(userId, { limit: 4 }), getSavedSkills(), getCategories()])
+            .then(([skills, savedSkills, allCategories]) => {
                 setContributions(skills)
                 setSaved(savedSkills)
+                setCategories(allCategories)
             })
             .catch((err) => setError(getErrorMessage(err)))
     }, [userId])
 
     if (error) return <ErrorState message={error} />
     if (!contributions || !saved) return <LoadingState />
+
+    const categoryName = (id: number) => categories.find((c) => c.id === id)?.name
 
     return (
         <div className="grid gap-8 md:grid-cols-2">
@@ -123,11 +128,11 @@ function ProfileOverview({ userId }: { userId: number }) {
                 {contributions.data.length === 0 ? (
                     <EmptyState message="You haven't shared any skills yet." />
                 ) : (
-                    contributions.data.map((s) => <SkillCard key={s.id} skill={s} />)
+                    contributions.data.map((s) => <SkillCard key={s.id} skill={s} categoryName={categoryName(s.category_id)} />)
                 )}
 
                 {contributions.total > contributions.data.length && (
-                    <Link to={`/users/${userId}`} className="text-primary">see all →</Link>
+                    <Link href={`/users/${userId}`} className="text-primary">see all →</Link>
                 )}
             </section>
 
@@ -137,11 +142,11 @@ function ProfileOverview({ userId }: { userId: number }) {
                 {saved.length === 0 ? (
                     <EmptyState message="No saved skills yet." />
                 ) : (
-                    saved.slice(0, 4).map((s) => <SkillCard key={s.id} skill={s.skill} />)
+                    saved.slice(0, 4).map((s) => <SkillCard key={s.id} skill={s.skill} categoryName={categoryName(s.skill.category_id)} />)
                 )}
 
                 {saved.length > 4 && (
-                    <Link to="/saved" className="text-primary">see all →</Link>
+                    <Link href="/saved" className="text-primary">see all →</Link>
                 )}
             </section>
 
@@ -209,14 +214,12 @@ function EditProfileForm({ user }: { user: User }) {
 
 function DeleteAccount() {
     const { logout } = useAuth()
-    const navigate = useNavigate()
     const [deleting, setDeleting] = useState(false)
 
     async function handleDelete() {
         setDeleting(true)
         try {
             await deleteMe()
-            navigate("/")
             logout()
             toast.success("Account deleted")
         } catch (err) {
