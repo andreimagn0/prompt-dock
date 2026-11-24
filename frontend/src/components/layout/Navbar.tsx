@@ -42,6 +42,10 @@ function NavLinks() {
 
       {user ? (
           <>
+            <NavLink href="/skills/new" className={buttonVariants({ variant: "ghost" })}>
+              New skill
+            </NavLink>
+
             <NavLink href="/profile" className={buttonVariants({ variant: "ghost" })}>
               {user.username}
             </NavLink>

@@ -3,14 +3,17 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import axios from "axios"
-import { StarIcon } from "lucide-react"
+import { PencilIcon, StarIcon } from "lucide-react"
+import { useAuth } from "@/context/AuthContext"
 import { isNotFoundError } from "@/api/api"
 import { getSkill, type Skill } from "@/api/skills"
 import { ErrorState } from "@/components/common/ErrorState"
 import { LoadingState } from "@/components/common/LoadingState"
 import { Badge } from "@/components/ui/badge"
+import { buttonVariants } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { BackToSkills } from "./BackToSkills"
+import { DeleteSkillButton } from "./DeleteSkillButton"
 import { SkillNotFound } from "./SkillNotFound"
 
 type Props = { skillId: number }
@@ -26,6 +29,7 @@ function formatDate(value: string): string {
 }
 
 export function SkillDetail({ skillId }: Props) {
+  const { user } = useAuth()
   const [skill, setSkill] = useState<Skill | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<LoadError>(null)
@@ -108,6 +112,22 @@ export function SkillDetail({ skillId }: Props) {
                   </span>
                 )}
               </div>
+
+              {user?.id === skill.user_id && (
+                <div className="flex flex-wrap gap-2">
+                  <Link
+                    href={`/skills/${skill.id}/edit`}
+                    className={buttonVariants({ variant: "outline" })}
+                  >
+                    <PencilIcon aria-hidden="true" />
+                    Edit skill
+                  </Link>
+                  <DeleteSkillButton
+                    skillId={skill.id}
+                    skillTitle={skill.title}
+                  />
+                </div>
+              )}
             </header>
 
             <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-3">

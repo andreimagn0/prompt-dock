@@ -67,3 +67,25 @@ export const getSkill = (
   api
     .get<Skill>(`/skills/${skillId}`, { signal: options.signal })
     .then((r) => r.data)
+
+// Fields the client may set on POST /skills. Owner, version and fork parent
+// are assigned by the server.
+export type SkillInput = {
+  title: string
+  description: string
+  content: string
+  category_id: number
+  is_public: boolean
+}
+
+// POST /skills (requires login). Returns the created skill.
+export const createSkill = (data: SkillInput) =>
+  api.post<Skill>("/skills", data).then((r) => r.data)
+
+// PUT /skills/{id} (owner only). Only the fields sent are changed.
+export const updateSkill = (skillId: number, data: Partial<SkillInput>) =>
+  api.put<Skill>(`/skills/${skillId}`, data).then((r) => r.data)
+
+// DELETE /skills/{id} (owner only)
+export const deleteSkill = (skillId: number) =>
+  api.delete<{ message: string }>(`/skills/${skillId}`).then((r) => r.data)
