@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { useAuth } from "@/context/AuthContext"
 import { Menu } from "lucide-react"
 import { Button, buttonVariants } from "@/components/ui/button"
 import {
@@ -24,6 +25,8 @@ function NavLink({ href, ...props }: NavLinkProps) {
 }
 
 function NavLinks() {
+  const { user, logout } = useAuth()
+
   return (
     <>
       <NavLink href="/" className={buttonVariants({ variant: "ghost" })}>
@@ -37,20 +40,30 @@ function NavLinks() {
         Categories
       </NavLink>
 
-      <NavLink href="/saved" className={buttonVariants({ variant: "ghost" })}>
-        Saved
-      </NavLink>
+      {user ? (
+          <>
+            <NavLink href="/profile" className={buttonVariants({ variant: "ghost" })}>
+              {user.username}
+            </NavLink>
 
-      <NavLink href="/login" className={buttonVariants({ variant: "outline" })}>
-        Log in
-      </NavLink>
+            <Button variant="outline" onClick={logout}>
+              Logout
+            </Button>
 
-      <NavLink
-        href="/register"
-        className={buttonVariants({ variant: "outline" })}
-      >
-        Sign up
-      </NavLink>
+          </>
+        ) : (
+          <>
+            <NavLink href="/login" className={buttonVariants({ variant: "outline" })}>
+              Log in
+            </NavLink>
+
+            <NavLink href="/register" className={buttonVariants({ variant: "outline" })}>
+              Sign up
+            </NavLink>
+
+          </>
+        )
+      }
     </>
   )
 }

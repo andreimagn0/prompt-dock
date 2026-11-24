@@ -1,0 +1,3 @@
+afterEach(() => {
+    localStorage.clear()
+})

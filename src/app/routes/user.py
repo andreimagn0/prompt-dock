@@ -1,5 +1,5 @@
 from typing import Annotated
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.core.auth import verify_password
@@ -7,6 +7,8 @@ from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.models.user import User
 from app.repository import user as user_repo
+from app.repository.skill import list_public_skills
+from app.schemas.skill import SkillList
 from app.schemas.user import UserPublic, UserResponse, UserUpdate
 
 router = APIRouter()
@@ -59,11 +61,24 @@ def public_profile(
 
     return user
 
-# THE FOLLOWING IS NOT COMPLETE AND NEEDS SKILL SCHEME IMPLEMENTATION FIRST
 
-# # GET /api/users/{id}/skills: a user's public skills (needs Member 2's Skill model merged first)
-# @router.get("/users/{id}/skills")
-# def user_skills(
-#     id: int,
-#     db: Annotated[Session, Depends(get_db)]
-# ):
+@router.get("/users/{id}/skills")
+def user_skills(
+    id: int,
+    db: Annotated[Session, Depends(get_db)],
+    page: Annotated[int, Query(ge=1)] = 1,
+    limit: Annotated[int, Query(ge=1, le=100)] = 10,
+) -> SkillList:
+    if not user_repo.get_user(db, id): 
+        raise HTTPException(status_code=404, detail="User not found")
+
+    skills, total = list_public_skills(
+        db, user_id=id, page=page, limit=limit
+    )
+
+    return SkillList(
+        data=skills, 
+        page=page, 
+        limit=limit,
+        total=total
+    )

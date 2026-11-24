@@ -68,3 +68,15 @@ class Skill(Base):
     saved_by = relationship(
         "SavedSkill", back_populates="skill", cascade="all, delete-orphan"
     )
+    forks_of_this = relationship(
+        "Fork", 
+        foreign_keys="Fork.original_skill_id", 
+        back_populates="original_skill", 
+        cascade="all, delete-orphan"
+    )
+    fork_record = relationship(
+        "Fork", 
+        foreign_keys="Fork.forked_skill_id",
+        back_populates="forked_skill",
+        cascade="all, delete-orphan"
+    )

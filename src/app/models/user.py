@@ -43,8 +43,18 @@ class User(Base):
     )
 
     # Community feature relationships
-    comments = relationship("Comment", back_populates="user")
-    ratings = relationship("Rating", back_populates="user")
-    saved_skills = relationship("SavedSkill", back_populates="user")
-    versions = relationship("SkillVersion", back_populates="creator")
-    forks = relationship("Fork", back_populates="user")
+    comments = relationship(
+        "Comment", back_populates="user", cascade="all, delete-orphan"
+    )
+    ratings = relationship(
+        "Rating", back_populates="user", cascade="all, delete-orphan"
+    )
+    saved_skills = relationship(
+        "SavedSkill", back_populates="user", cascade="all, delete-orphan"
+    )
+    versions = relationship(
+        "SkillVersion", back_populates="creator", cascade="all, delete-orphan"
+    )
+    forks = relationship(
+        "Fork", back_populates="user", cascade="all, delete-orphan"
+    )

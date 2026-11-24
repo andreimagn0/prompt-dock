@@ -1,6 +1,6 @@
 """Database operations for community features."""
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.models.comment import Comment
@@ -56,7 +56,11 @@ class CommunityRepository:
     def list_saved_skills(self, user_id: int):
         statement = (
             select(SavedSkill)
-            .where(SavedSkill.user_id == user_id)
+            .join(SavedSkill.skill)
+            .where(
+                SavedSkill.user_id == user_id, 
+                or_(Skill.is_public.is_(True), Skill.user_id == user_id)
+            )
             .order_by(SavedSkill.created_at.desc())
         )
         return list(self.db.scalars(statement).all())

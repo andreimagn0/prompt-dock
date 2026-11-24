@@ -24,3 +24,24 @@ def get_current_user(creds: HTTPAuthorizationCredentials = Depends(bearer), db: 
     if user is None:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
     return user
+
+optional_bearer = HTTPBearer(auto_error=False)
+
+def get_optional_user(
+        creds: HTTPAuthorizationCredentials | None = Depends(optional_bearer), 
+        db: Session = Depends(get_db)
+    ) -> User | None:
+
+    """Like get_current_user, but returns NOne instead of a 401 when there is no valid token"""
+
+    if creds is None: 
+        return None
+    try: 
+        payload = jwt.decode(
+            creds.credentials, 
+            settings.secret_key, 
+            algorithms=[settings.algorithm]
+        )
+        return db.get(User, int(payload["sub"]))
+    except Exception:
+        return None

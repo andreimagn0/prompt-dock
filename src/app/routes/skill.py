@@ -2,7 +2,7 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from app.core.dependencies import DbSession, get_current_user
+from app.core.dependencies import DbSession, get_current_user, get_optional_user
 from app.models import Skill, User
 from app.repository.category import get_category
 from app.repository.skill import (
@@ -56,6 +56,19 @@ def browse_skills(
 
     return SkillList(data=skills, page=page, limit=limit, total=total)
 
+# GET /skills/{skill_id}: one skill; private skills ar only visible to their owner (404 for everyone else)
+
+@router.get("/skills/{skill_id}")
+def read_skill(
+    skill_id: int, 
+    db: DbSession, 
+    user: Annotated[User | None, Depends(get_optional_user)]
+) -> SkillResponse:
+    skill = get_skill(db, skill_id)
+    if skill is None or (not skill.is_public and (user is None or skill.user_id != user.id)):
+        raise HTTPException(status_code=404, detail="Skill not found")
+
+    return skill
 
 # POST /skills: create a skill owned by the logged-in user (400 if the category doesn't exist)
 

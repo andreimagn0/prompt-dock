@@ -1,12 +1,14 @@
-# Prompt Dock Backend
+# Prompt Dock
 
-Prompt Dock is our backend for a website where users can create, discover, save, rate, and share AI prompts and skills.
+Prompt Dock is a website where users can create, discover, save, rate, and share AI prompts and skills.
 
 The backend uses FastAPI, SQLAlchemy, SQLite, Pydantic, JWT authentication, password hashing, and pytest.
 
+The frontend uses Next.js (App Router), React, TypeScript, Axios, Tailwind CSS, ShadCN UI, Jest, and React Testing Library.
+
 ## Setup
 
-You will need Python 3.12 or newer and `uv`.
+You will need Python 3.12 or newer, `uv`, and Node.js with `npm`.
 
 Clone the repository and enter the project folder:
 
@@ -29,6 +31,8 @@ cp .env.example .env
 
 Open `.env` and replace the placeholder `SECRET_KEY` with a secure secret. Do not commit `.env` to GitHub.
 
+Make sure `ALLOWED_ORIGINS` in `.env` includes `http://localhost:3000`. Otherwise the browser blocks requests from the frontend.
+
 ## Run the Backend
 
 Start the server with:
@@ -49,6 +53,52 @@ The interactive API documentation is available at:
 http://127.0.0.1:8000/docs
 ```
 
+## Sample Data
+
+Fill your local database with sample categories, users, and skills:
+
+```bash
+PYTHONPATH=src uv run python -m app.seed
+```
+
+Run it from the project folder, not from `src/`. It is safe to run more than once.
+
+It creates two users you can log in with:
+
+| Username | Password |
+|---|---|
+| `alice` | `password123` |
+| `bob` | `password123` |
+
+## Run the Frontend
+
+In a second terminal, go to the frontend folder and install the dependencies:
+
+```bash
+cd frontend
+npm install
+```
+
+Create a local environment file:
+
+```bash
+cp .env.example .env.local
+```
+
+Start the frontend with:
+
+```bash
+npm run dev
+```
+
+The frontend runs at:
+
+```text
+http://localhost:3000
+```
+
+The backend needs to be running at the same time.
+
 ## Run the Tests
 
 Run all tests with:
@@ -58,6 +108,14 @@ uv run pytest
 ```
 
 The tests cover authentication, users, categories, skills, community features, database behavior, repositories, schemas, and settings.
+
+Run the frontend tests from the `frontend/` folder with:
+
+```bash
+npm test
+```
+
+The frontend tests use Jest and React Testing Library and live in `frontend/src/__tests__/`.
 
 ## Main Features
 
@@ -78,6 +136,8 @@ The API currently supports:
 API endpoints use the `/api/v1` prefix.
 
 ## Project Structure
+
+The backend lives in `src/app/`:
 
 ```text
 src/app/
@@ -102,6 +162,36 @@ The main folders are:
 - `routes`: API endpoints
 - `core`: Settings, authentication, and database setup
 - `tests`: Automated tests
+
+The frontend lives in `frontend/src/`:
+
+```text
+frontend/src/
+├── __tests__/
+├── api/
+├── app/
+│   ├── (auth)/
+│   ├── (main)/
+│   │   └── (protected)/
+│   └── layout.tsx
+├── components/
+└── context/
+```
+
+- `__tests__`: Frontend tests
+- `api`: Axios client and one file per area (`auth.ts`, `users.ts`, `skills.ts`, `categories.ts`, `community.ts`)
+- `app`: Pages. Each folder is a URL, and each page file is named `page.tsx`
+- `app/(auth)`: Full-width pages (login and sign up)
+- `app/(main)`: Pages inside the centered container
+- `app/(main)/(protected)`: Pages that need a login
+- `components`: Shared UI. `ui/` holds the ShadCN components and `layout/` holds the navbar and app shell
+- `context`: Login state (`AuthContext`)
+
+Folders in parentheses are route groups. They share a layout but do not appear in the URL.
+
+To call the backend, add a function to the matching file in `api/` and import `api` from `./api`. It adds the login token automatically. Use `getErrorMessage(error)` to show API errors to users.
+
+To add a page, create a folder in `app/` with a `page.tsx` inside it. Pages that need a login go inside `(main)/(protected)/`. Pages that use state or hooks need `"use client"` as their first line.
 
 ## Database
 
