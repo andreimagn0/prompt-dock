@@ -181,7 +181,7 @@ export function SkillDiscovery() {
             <Input
               id="skill-search"
               type="search"
-              placeholder="Add Skills..."
+              placeholder="Search by title or description"
               value={searchInput}
               onChange={(event) => setSearchInput(event.target.value)}
             />
