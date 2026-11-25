@@ -12,6 +12,9 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { BackToSkills } from "./BackToSkills"
 import { SkillNotFound } from "./SkillNotFound"
+import { CategoryName } from "./CategoryName"
+import { SkillAuthor } from "./SkillAuthor"
+import { SkillCommunity } from "./SkillCommunity"
 
 type Props = { skillId: number }
 
@@ -88,13 +91,14 @@ export function SkillDetail({ skillId }: Props) {
               <p className="break-words text-muted-foreground">
                 {skill.description}
               </p>
+              <SkillAuthor userId={skill.user_id} />
 
               <div className="flex flex-wrap items-center gap-2 text-sm">
                 <Badge
                   variant="secondary"
                   render={<Link href={`/categories/${skill.category_id}`} />}
                 >
-                  Category #{skill.category_id}
+                  <CategoryName categoryId={skill.category_id} />
                 </Badge>
                 {!skill.is_public && <Badge variant="outline">Private</Badge>}
                 {skill.average_rating !== null && (
@@ -146,6 +150,8 @@ export function SkillDetail({ skillId }: Props) {
                 {skill.content}
               </pre>
             </section>
+
+            <SkillCommunity />
           </>
         )}
       </div>
