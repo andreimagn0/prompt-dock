@@ -171,7 +171,7 @@ export function SkillDetail({ skillId }: Props) {
               </pre>
             </section>
 
-            <SkillCommunity />
+            <SkillCommunity skillId={skill.id} />
           </>
         )}
       </div>
