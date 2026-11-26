@@ -147,7 +147,7 @@ npm run test:e2e
 The API currently supports:
 
 - User registration and login
-- JWT authentication
+- JWT authentication, stored in an `httpOnly` cookie
 - User profiles
 - Category browsing
 - Public skill discovery
@@ -159,6 +159,8 @@ The API currently supports:
 - Skill forks
 
 API endpoints use the `/api/v1` prefix.
+
+On the frontend, the community features live on each skill's page. Users can rate a skill, comment on it, save it, fork their own copy, and, if they own it, save a snapshot of the current version. Saved skills also show up on the profile page.
 
 ## Project Structure
 
