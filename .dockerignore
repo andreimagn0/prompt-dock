@@ -1,0 +1,6 @@
+.venv
+.env
+prompt_dock.db
+frontend
+__pycache__
+.git

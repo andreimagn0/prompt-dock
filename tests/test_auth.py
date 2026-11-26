@@ -1,6 +1,6 @@
 API = "/api/v1/auth"
 NEW_USER = {"username": "jay", "email": "jay@example.com", "password": "secret123"}
-
+LOGIN = {"identifier": "jay", "password": "secret123"}
 
 def test_register_creates_user(client):
     response = client.post(f"{API}/register", json=NEW_USER)
@@ -55,3 +55,31 @@ def test_login_unknown_user(client):
     response = client.post(f"{API}/login", json={"identifier": "nobody", "password": "secret123"})
 
     assert response.status_code == 401
+
+
+def test_login_sets_httponly_cookie(client):
+    client.post(f"{API}/register", json=NEW_USER)
+
+    response = client.post(f"{API}/login", json=LOGIN)
+
+    cookie = response.headers["set-cookie"]
+    assert "access_token=" in cookie
+    assert "HttpOnly" in cookie
+
+
+def test_cookie_logs_user_in(client):
+    client.post(f"{API}/register", json=NEW_USER)
+    client.post(f"{API}/login", json=LOGIN)
+
+    response = client.get("/api/v1/users/me")
+
+    assert response.status_code == 200
+    assert response.json()["username"] == "jay"
+
+
+def test_logout_clears_cookie(client):
+    client.post(f"{API}/register", json=NEW_USER)
+    client.post(f"{API}/login", json=LOGIN)
+
+    assert client.post(f"{API}/logout").status_code == 204
+    assert client.get("/api/v1/users/me").status_code == 401

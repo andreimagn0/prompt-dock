@@ -2,6 +2,7 @@
 import { fireEvent, render, screen, within } from "@testing-library/react"
 import { AxiosError, AxiosHeaders, type AxiosResponse } from "axios"
 import { AuthProvider } from "@/context/AuthContext"
+import { getMe } from "@/api/auth"
 import { getSkill, type Skill } from "@/api/skills"
 import { getUser } from "@/api/users"
 import { getCategories } from "@/api/categories"
@@ -75,6 +76,8 @@ function renderDetail() {
 
 beforeEach(() => {
   jest.clearAllMocks()
+  // Logged out unless a test says otherwise
+  jest.mocked(getMe).mockRejectedValue(new Error("Not logged in"))
 
   jest.mocked(getSkill).mockResolvedValue(skill)
 

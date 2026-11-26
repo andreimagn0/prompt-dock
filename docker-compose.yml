@@ -1,0 +1,27 @@
+services:
+  api:
+    build: .
+    env_file: .env
+    environment:
+      DATABASE_URL: sqlite:////app/data/prompt_dock.db
+      ALLOWED_ORIGINS: http://localhost:3000
+    volumes:
+      - db-data:/app/data
+    ports:
+      - "8000:8000"
+    command: >
+      sh -c "PYTHONPATH=src uv run --no-dev python -m app.seed && 
+      uv run --no-dev uvicorn --app-dir src app.main:app --host 0.0.0.0 --port 8000"
+
+  web:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8000/api/v1
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
+volumes:
+  db-data:

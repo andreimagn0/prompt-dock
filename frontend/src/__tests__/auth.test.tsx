@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { AuthProvider } from "@/context/AuthContext"
-import { getMe, login, register, type Token, type User } from "@/api/auth"
+import { getMe, login, logout, register, type Token, type User } from "@/api/auth"
 import { getCategories } from "@/api/categories"
 import { getSkills } from "@/api/skills"
 import { Navbar } from "@/components/layout/Navbar"
@@ -18,6 +18,7 @@ jest.mock("next/navigation", () => ({
 
 jest.mock("@/api/auth", () => ({
     login: jest.fn(),
+    logout: jest.fn(),
     register: jest.fn(),
     getMe: jest.fn(),
 }))
@@ -28,6 +29,13 @@ jest.mock("@/api/skills", () => ({ getSkills: jest.fn() }))
 
 const alice = { id: 1, username: "alice", email: "alice@example.com", created_at: "2026-01-01" }
 const token = { access_token: "abc", token_type: "bearer" }
+
+// The page loads logged out (no cookie yet), then the login sets the cookie
+function loggedOutUntilLogin() {
+    jest.mocked(getMe)
+        .mockRejectedValueOnce(apiError("Invalid or expired token", 401))
+        .mockResolvedValue(alice)
+}
 
 function renderWithAuth(page: React.ReactNode) {
     render(<AuthProvider>{page}</AuthProvider>)
@@ -49,41 +57,42 @@ function fillRegister(fields: { username: string; email: string; password: strin
 
 beforeEach(() => {
     jest.resetAllMocks()
+    // No login cookie by default, so the backend says no one is logged in
+    jest.mocked(getMe).mockRejectedValue(apiError("Invalid or expired token", 401))
+    jest.mocked(logout).mockResolvedValue({} as never)
     jest.mocked(getCategories).mockResolvedValue([])
     jest.mocked(getSkills).mockResolvedValue({ data: [], page: 1, limit: 2, total: 0 })
 })
 
 describe("AuthProvider", () => {
-    it("loads the current user when a token is saved", async () => {
-        localStorage.setItem("token", "abc")
+    it("loads the current user from the login cookie", async () => {
         jest.mocked(getMe).mockResolvedValue(alice)
 
         renderWithAuth(<Navbar />)
 
         expect((await screen.findAllByRole("link", { name: "alice" })).length).toBeGreaterThan(0)
         expect(getMe).toHaveBeenCalledTimes(1)
-        expect(localStorage.getItem("token")).toBe("abc")
     })
 
-    it("does not ask the backend who is logged in without a token", async () => {
+    it("shows the logged-out links when the backend rejects the cookie", async () => {
         renderWithAuth(<Navbar />)
 
         expect((await screen.findAllByRole("link", { name: "Log in" })).length).toBeGreaterThan(0)
-        expect(getMe).not.toHaveBeenCalled()
+        expect(getMe).toHaveBeenCalledTimes(1)
     })
 
-    it("clears a token the backend rejects", async () => {
-        localStorage.setItem("token", "expired")
-        jest.mocked(getMe).mockRejectedValue(apiError("Invalid token", 401))
+    it("does not store the token in localStorage", async () => {
+        jest.mocked(login).mockResolvedValue(token)
+        loggedOutUntilLogin()
+        renderWithAuth(<LoginPage />)
 
-        renderWithAuth(<Navbar />)
+        fillLogin("alice", "password123")
 
-        expect((await screen.findAllByRole("link", { name: "Log in" })).length).toBeGreaterThan(0)
-        expect(localStorage.getItem("token")).toBeNull()
+        await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/"))
+        expect(localStorage.length).toBe(0)
     })
 
-    it("logs out, removing the token and the user", async () => {
-        localStorage.setItem("token", "abc")
+    it("logs out, asking the backend to clear the cookie", async () => {
         jest.mocked(getMe).mockResolvedValue(alice)
         renderWithAuth(<Navbar />)
 
@@ -91,7 +100,7 @@ describe("AuthProvider", () => {
 
         expect((await screen.findAllByRole("link", { name: "Log in" })).length).toBeGreaterThan(0)
         expect(screen.queryByRole("link", { name: "alice" })).toBeNull()
-        expect(localStorage.getItem("token")).toBeNull()
+        expect(logout).toHaveBeenCalledTimes(1)
     })
 })
 
@@ -104,7 +113,6 @@ describe("ProtectedLayout", () => {
     })
 
     it("shows the page to logged-in users", async () => {
-        localStorage.setItem("token", "abc")
         jest.mocked(getMe).mockResolvedValue(alice)
 
         renderWithAuth(<ProtectedLayout><p>Secret page</p></ProtectedLayout>)
@@ -115,7 +123,6 @@ describe("ProtectedLayout", () => {
 
     it("waits for the user to load before deciding to redirect", async () => {
         const me = deferred<User>()
-        localStorage.setItem("token", "abc")
         jest.mocked(getMe).mockReturnValue(me.promise)
 
         renderWithAuth(<ProtectedLayout><p>Secret page</p></ProtectedLayout>)
@@ -132,16 +139,15 @@ describe("ProtectedLayout", () => {
 })
 
 describe("LoginPage", () => {
-    it("saves the token and goes home after logging in", async () => {
+    it("logs in and goes home", async () => {
         jest.mocked(login).mockResolvedValue(token)
-        jest.mocked(getMe).mockResolvedValue(alice)
+        loggedOutUntilLogin()
         renderWithAuth(<LoginPage />)
 
         fillLogin("alice", "password123")
 
         await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/"))
         expect(login).toHaveBeenCalledWith({ identifier: "alice", password: "password123" })
-        expect(localStorage.getItem("token")).toBe("abc")
     })
 
     it("shows the backend error when logging in fails", async () => {
@@ -151,14 +157,13 @@ describe("LoginPage", () => {
         fillLogin("alice", "wrong")
 
         expect((await screen.findByRole("alert")).textContent).toBe("Incorrect username or password")
-        expect(localStorage.getItem("token")).toBeNull()
         expect(mockReplace).not.toHaveBeenCalled()
     })
 
     it("disables the button while the login request is in flight", async () => {
         const request = deferred<Token>()
         jest.mocked(login).mockReturnValue(request.promise)
-        jest.mocked(getMe).mockResolvedValue(alice)
+        loggedOutUntilLogin()
         renderWithAuth(<LoginPage />)
 
         fillLogin("alice", "password123")
@@ -178,7 +183,6 @@ describe("auth pages for logged-in users", () => {
         ["LoginPage", LoginPage],
         ["RegisterPage", RegisterPage],
     ])("%s sends an already logged-in user home", async (_name, Page) => {
-        localStorage.setItem("token", "abc")
         jest.mocked(getMe).mockResolvedValue(alice)
 
         renderWithAuth(<Page />)
@@ -194,7 +198,7 @@ describe("RegisterPage", () => {
         const request = deferred<User>()
         jest.mocked(register).mockReturnValue(request.promise)
         jest.mocked(login).mockResolvedValue(token)
-        jest.mocked(getMe).mockResolvedValue(alice)
+        loggedOutUntilLogin()
         renderWithAuth(<RegisterPage />)
 
         fillRegister({ username: "alice", email: "alice@example.com", password: "password123", confirm: "password123" })
@@ -210,7 +214,7 @@ describe("RegisterPage", () => {
     it("creates the account, logs in, and goes home", async () => {
         jest.mocked(register).mockResolvedValue(alice)
         jest.mocked(login).mockResolvedValue(token)
-        jest.mocked(getMe).mockResolvedValue(alice)
+        loggedOutUntilLogin()
         renderWithAuth(<RegisterPage />)
 
         fillRegister({ username: "alice", email: "alice@example.com", password: "password123", confirm: "password123" })
@@ -218,7 +222,6 @@ describe("RegisterPage", () => {
         await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/"))
         expect(register).toHaveBeenCalledWith({ username: "alice", email: "alice@example.com", password: "password123" })
         expect(login).toHaveBeenCalledWith({ identifier: "alice@example.com", password: "password123" })
-        expect(localStorage.getItem("token")).toBe("abc")
     })
 
     it("stops when the passwords do not match", async () => {
@@ -239,7 +242,6 @@ describe("RegisterPage", () => {
 
         expect((await screen.findByRole("alert")).textContent).toBe("Username already taken")
         expect(login).not.toHaveBeenCalled()
-        expect(localStorage.getItem("token")).toBeNull()
         expect(mockReplace).not.toHaveBeenCalled()
         expect(screen.getByRole<HTMLButtonElement>("button", { name: "Create Account" }).disabled).toBe(false)
     })

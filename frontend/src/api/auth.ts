@@ -18,4 +18,6 @@ export const register = (data: {username: string; email: string; password: strin
 export const login = (data: {identifier: string; password: string}) =>
     api.post<Token>("/auth/login", data).then((r) => r.data)
 
+export const logout = () => api.post("/auth/logout")
+
 export const getMe = () => api.get<User>("/users/me").then((r) => r.data)

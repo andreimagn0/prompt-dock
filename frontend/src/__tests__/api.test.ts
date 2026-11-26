@@ -56,15 +56,11 @@ describe("api request interceptor", () => {
             .rejects.toThrow("NEXT_PUBLIC_API_URL is not set")
     })
 
-    it("attaches the saved token as a bearer header", async () => {
-        localStorage.setItem("token", "abc")
-
-        const res = await api.get("/users/me", { baseURL: "http://api.test", adapter: echoAuth })
-
-        expect(res.data).toBe("Bearer abc")
+    it("sends the login cookie with every request", () => {
+        expect(api.defaults.withCredentials).toBe(true)
     })
 
-    it("sends no Authorization header without a saved token", async () => {
+    it("does not attach an Authorization header", async () => {
         const res = await api.get("/categories", { baseURL: "http://api.test", adapter: echoAuth })
 
         expect(res.data).toBeNull()

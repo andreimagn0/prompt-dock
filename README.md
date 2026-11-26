@@ -99,6 +99,24 @@ http://localhost:3000
 
 The backend needs to be running at the same time.
 
+## Run with Docker
+
+If you have Docker installed, you can run the whole app with one command instead of the steps above.
+
+Create `.env` first (see Setup), then run:
+
+```bash
+docker compose up --build
+```
+
+The frontend runs at `http://localhost:3000` and the backend at `http://localhost:8000`. Sample data is added automatically.
+
+To stop it, press Ctrl+C. To reset the database, run:
+
+```bash
+docker compose down -v
+```
+
 ## Run the Tests
 
 Run all tests with:
@@ -117,12 +135,19 @@ npm test
 
 The frontend tests use Jest and React Testing Library and live in `frontend/src/__tests__/`.
 
+The UI tests use Playwright and live in `frontend/e2e/`. They run in a real browser against the running app, so start it first with `docker compose up --build`. Then, from the `frontend/` folder:
+
+```bash
+npx playwright install chromium
+npm run test:e2e
+```
+
 ## Main Features
 
 The API currently supports:
 
 - User registration and login
-- JWT authentication
+- JWT authentication, stored in an `httpOnly` cookie
 - User profiles
 - Category browsing
 - Public skill discovery
@@ -134,6 +159,8 @@ The API currently supports:
 - Skill forks
 
 API endpoints use the `/api/v1` prefix.
+
+On the frontend, the community features live on each skill's page. Users can rate a skill, comment on it, save it, fork their own copy, and, if they own it, save a snapshot of the current version. Saved skills also show up on the profile page.
 
 ## Project Structure
 
