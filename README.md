@@ -99,6 +99,24 @@ http://localhost:3000
 
 The backend needs to be running at the same time.
 
+## Run with Docker
+
+If you have Docker installed, you can run the whole app with one command instead of the steps above.
+
+Create `.env` first (see Setup), then run:
+
+```bash
+docker compose up --build
+```
+
+The frontend runs at `http://localhost:3000` and the backend at `http://localhost:8000`. Sample data is added automatically.
+
+To stop it, press Ctrl+C. To reset the database, run:
+
+```bash
+docker compose down -v
+```
+
 ## Run the Tests
 
 Run all tests with:
