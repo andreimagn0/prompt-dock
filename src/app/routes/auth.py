@@ -1,10 +1,11 @@
 from typing import Annotated
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.auth import create_access_token, verify_password
+from app.core.settings import settings
 from app.repository import user as user_repo
 
 from app.schemas.user import UserResponse, UserRegister, UserLogin
@@ -29,6 +30,7 @@ def register(
 @router.post("/auth/login", status_code=200)
 def login(
     data: UserLogin, 
+    response: Response,
     db: Annotated[Session, Depends(get_db)]
 ) -> Token:
     
@@ -37,4 +39,18 @@ def login(
     if not user or not verify_password(data.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Incorrect username/email or password")
 
-    return Token(access_token=create_access_token(user.id))
+    token = create_access_token(user.id)
+    response.set_cookie(
+        key="access_token", 
+        value=token,
+        httponly=True,
+        samesite="lax",
+        secure=settings.environment == "production",
+        max_age=settings.access_token_expire_minutes * 60,
+    )
+
+    return Token(access_token=token)
+
+@router.post("/auth/logout", status_code=204)
+def logout(response: Response) -> None: 
+    response.delete_cookie("access_token")

@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { toast } from "sonner"
 import { AuthProvider } from "@/context/AuthContext"
-import { getMe, type User } from "@/api/auth"
+import { getMe, logout, type User } from "@/api/auth"
 import { updateMe, deleteMe, getUser, getUserSkills } from "@/api/users"
 import { getSavedSkills } from "@/api/community"
 import { getCategories } from "@/api/categories"
@@ -21,6 +21,7 @@ jest.mock("sonner", () => ({
 
 jest.mock("@/api/auth", () => ({
     login: jest.fn(),
+    logout: jest.fn(),
     getMe: jest.fn(),
 }))
 
@@ -44,7 +45,6 @@ const budgetSkill: Skill = {
 
 // Log in as alice and open the profile page
 async function openProfile() {
-    localStorage.setItem("token", "abc")
     jest.mocked(getMe).mockResolvedValue(alice)
     render(<AuthProvider><ProfilePage /></AuthProvider>)
     await screen.findByRole("heading", { name: "@alice" })
@@ -57,6 +57,7 @@ async function openSettings() {
 
 beforeEach(() => {
     jest.resetAllMocks()
+    jest.mocked(logout).mockResolvedValue({} as never)
     jest.mocked(getUserSkills).mockResolvedValue({ data: [], page: 1, limit: 4, total: 0 })
     jest.mocked(getSavedSkills).mockResolvedValue([])
     jest.mocked(getCategories).mockResolvedValue([])
@@ -108,7 +109,7 @@ describe("ProfilePage account deletion", () => {
 
         await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull())
         expect(deleteMe).not.toHaveBeenCalled()
-        expect(localStorage.getItem("token")).toBe("abc")
+        expect(logout).not.toHaveBeenCalled()
     })
 
     it("deletes the account and logs out after confirming", async () => {
@@ -120,7 +121,7 @@ describe("ProfilePage account deletion", () => {
 
         await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Account deleted"))
         expect(deleteMe).toHaveBeenCalledTimes(1)
-        expect(localStorage.getItem("token")).toBeNull()
+        expect(logout).toHaveBeenCalledTimes(1)
         // The page renders nothing once the user is cleared from auth state
         expect(screen.queryByRole("heading", { name: "@alice" })).toBeNull()
     })
@@ -134,7 +135,7 @@ describe("ProfilePage account deletion", () => {
 
         await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Server error"))
         expect(toast.success).not.toHaveBeenCalled()
-        expect(localStorage.getItem("token")).toBe("abc")
+        expect(logout).not.toHaveBeenCalled()
         // The dialog stays open so the user can retry or cancel
         expect(screen.getByRole("alertdialog")).toBeTruthy()
         await waitFor(() =>
@@ -144,13 +145,13 @@ describe("ProfilePage account deletion", () => {
 })
 
 describe("ProfilePage sign out", () => {
-    it("clears the token and the user", async () => {
+    it("logs out and clears the user", async () => {
         await openProfile()
 
         fireEvent.click(screen.getByRole("button", { name: "Sign out" }))
 
         await waitFor(() => expect(screen.queryByRole("heading", { name: "@alice" })).toBeNull())
-        expect(localStorage.getItem("token")).toBeNull()
+        expect(logout).toHaveBeenCalledTimes(1)
     })
 })
 
