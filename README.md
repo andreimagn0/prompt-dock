@@ -135,6 +135,13 @@ npm test
 
 The frontend tests use Jest and React Testing Library and live in `frontend/src/__tests__/`.
 
+The UI tests use Playwright and live in `frontend/e2e/`. They run in a real browser against the running app, so start it first with `docker compose up --build`. Then, from the `frontend/` folder:
+
+```bash
+npx playwright install chromium
+npm run test:e2e
+```
+
 ## Main Features
 
 The API currently supports:
