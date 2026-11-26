@@ -1,15 +1,23 @@
+
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useAuth } from "@/context/AuthContext"
-import { getComments, createComment, updateComment, deleteComment } from "@/api/community"
+import {
+  getComments,
+  createComment,
+  updateComment,
+  deleteComment,
+} from "@/api/community"
 import type { Comment } from "@/api/community"
 import { getUser } from "@/api/users"
 
 type Props = {
   skillId: number
 }
+
+type PendingAction = "post" | "edit" | "delete" | null
 
 export function SkillComments({ skillId }: Props) {
   const { user } = useAuth()
@@ -22,6 +30,11 @@ export function SkillComments({ skillId }: Props) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [submitError, setSubmitError] = useState("")
+  const [pendingAction, setPendingAction] = useState<PendingAction>(null)
+  const [pendingCommentId, setPendingCommentId] = useState<number | null>(null)
+
+  // Prevent duplicate requests if the user clicks multiple times quickly.
+  const requestLock = useRef(false)
 
   useEffect(() => {
     async function loadComments() {
@@ -33,7 +46,6 @@ export function SkillComments({ skillId }: Props) {
         setComments(data)
 
         const userIds = [...new Set(data.map((comment) => comment.user_id))]
-
         const names: Record<number, string> = {}
 
         await Promise.all(
@@ -60,22 +72,28 @@ export function SkillComments({ skillId }: Props) {
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    setSubmitError("")
 
-    if (!content.trim()) return
+    if (!content.trim() || requestLock.current) return
+
+    requestLock.current = true
+    setPendingAction("post")
+    setPendingCommentId(null)
+    setSubmitError("")
 
     try {
       const newComment = await createComment(skillId, {
         content: content.trim(),
       })
 
-      setComments((previous) => [...previous, newComment])
+      // Prepend so the newest comment appears first.
+      setComments((previous) => [newComment, ...previous])
       setContent("")
 
       // Load the username for the new comment if needed.
       if (!usernames[newComment.user_id]) {
         try {
           const author = await getUser(String(newComment.user_id))
+
           setUsernames((previous) => ({
             ...previous,
             [newComment.user_id]: author.username,
@@ -89,18 +107,27 @@ export function SkillComments({ skillId }: Props) {
       }
     } catch {
       setSubmitError("Couldn't post your comment.")
+    } finally {
+      requestLock.current = false
+      setPendingAction(null)
+      setPendingCommentId(null)
     }
   }
 
   function startEditing(comment: Comment) {
+    if (requestLock.current) return
+
     setEditingId(comment.id)
     setEditContent(comment.content)
     setSubmitError("")
   }
 
   async function handleEdit(commentId: number) {
-    if (!editContent.trim()) return
+    if (!editContent.trim() || requestLock.current) return
 
+    requestLock.current = true
+    setPendingAction("edit")
+    setPendingCommentId(commentId)
     setSubmitError("")
 
     try {
@@ -118,13 +145,25 @@ export function SkillComments({ skillId }: Props) {
       setEditContent("")
     } catch {
       setSubmitError("Couldn't update your comment.")
+    } finally {
+      requestLock.current = false
+      setPendingAction(null)
+      setPendingCommentId(null)
     }
   }
 
   async function handleDelete(commentId: number) {
-    const confirmed = window.confirm("Are you sure you want to delete this comment?")
+    if (requestLock.current) return
+
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this comment?"
+    )
+
     if (!confirmed) return
 
+    requestLock.current = true
+    setPendingAction("delete")
+    setPendingCommentId(commentId)
     setSubmitError("")
 
     try {
@@ -135,6 +174,10 @@ export function SkillComments({ skillId }: Props) {
       )
     } catch {
       setSubmitError("Couldn't delete your comment.")
+    } finally {
+      requestLock.current = false
+      setPendingAction(null)
+      setPendingCommentId(null)
     }
   }
 
@@ -142,7 +185,9 @@ export function SkillComments({ skillId }: Props) {
     <section className="space-y-4">
       <h3 className="text-lg font-semibold">Comments</h3>
 
-      {loading && <p className="text-sm text-muted-foreground">Loading comments...</p>}
+      {loading && (
+        <p className="text-sm text-muted-foreground">Loading comments...</p>
+      )}
 
       {error && <p className="text-sm text-destructive">{error}</p>}
 
@@ -154,6 +199,8 @@ export function SkillComments({ skillId }: Props) {
 
       {comments.map((comment) => {
         const isOwner = user && Number(user.id) === comment.user_id
+        const isEditingThisComment = editingId === comment.id
+        const isPending = pendingAction !== null
 
         return (
           <article key={comment.id} className="space-y-2 rounded-lg border p-4">
@@ -170,24 +217,29 @@ export function SkillComments({ skillId }: Props) {
               </span>
             </div>
 
-            {editingId === comment.id ? (
+            {isEditingThisComment ? (
               <div className="space-y-2">
                 <textarea
+                  aria-label="Edit comment"
                   value={editContent}
                   onChange={(e) => setEditContent(e.target.value)}
                   maxLength={5000}
                   rows={4}
-                  className="w-full rounded-md border bg-background p-3 text-sm"
+                  disabled={pendingAction === "edit"}
+                  className="w-full rounded-md border bg-background p-3 text-sm disabled:opacity-60"
                 />
 
                 <div className="flex gap-2">
                   <button
                     type="button"
                     onClick={() => handleEdit(comment.id)}
-                    disabled={!editContent.trim()}
+                    disabled={!editContent.trim() || isPending}
                     className="rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground disabled:opacity-50"
                   >
-                    Save
+                    {pendingAction === "edit" &&
+                    pendingCommentId === comment.id
+                      ? "Saving..."
+                      : "Save"}
                   </button>
 
                   <button
@@ -196,7 +248,8 @@ export function SkillComments({ skillId }: Props) {
                       setEditingId(null)
                       setEditContent("")
                     }}
-                    className="rounded-md border px-3 py-1.5 text-sm"
+                    disabled={isPending}
+                    className="rounded-md border px-3 py-1.5 text-sm disabled:opacity-50"
                   >
                     Cancel
                   </button>
@@ -211,7 +264,8 @@ export function SkillComments({ skillId }: Props) {
                     <button
                       type="button"
                       onClick={() => startEditing(comment)}
-                      className="text-sm text-primary hover:underline"
+                      disabled={isPending}
+                      className="text-sm text-primary hover:underline disabled:opacity-50"
                     >
                       Edit
                     </button>
@@ -219,9 +273,13 @@ export function SkillComments({ skillId }: Props) {
                     <button
                       type="button"
                       onClick={() => handleDelete(comment.id)}
-                      className="text-sm text-destructive hover:underline"
+                      disabled={isPending}
+                      className="text-sm text-destructive hover:underline disabled:opacity-50"
                     >
-                      Delete
+                      {pendingAction === "delete" &&
+                      pendingCommentId === comment.id
+                        ? "Deleting..."
+                        : "Delete"}
                     </button>
                   </div>
                 )}
@@ -234,12 +292,14 @@ export function SkillComments({ skillId }: Props) {
       {user ? (
         <form onSubmit={handleSubmit} className="space-y-2">
           <textarea
+            aria-label="Write a comment"
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder="Write a comment..."
             maxLength={5000}
             rows={3}
-            className="w-full rounded-md border bg-background p-3 text-sm"
+            disabled={pendingAction === "post"}
+            className="w-full rounded-md border bg-background p-3 text-sm disabled:opacity-60"
           />
 
           <div className="flex items-center justify-between">
@@ -249,15 +309,17 @@ export function SkillComments({ skillId }: Props) {
 
             <button
               type="submit"
-              disabled={!content.trim()}
+              disabled={!content.trim() || pendingAction !== null}
               className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground disabled:opacity-50"
             >
-              Post comment
+              {pendingAction === "post" ? "Posting..." : "Post comment"}
             </button>
           </div>
 
           {submitError && (
-            <p className="text-sm text-destructive">{submitError}</p>
+            <p className="text-sm text-destructive" role="alert">
+              {submitError}
+            </p>
           )}
         </form>
       ) : (
