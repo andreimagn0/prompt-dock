@@ -1,14 +1,13 @@
 "use client"
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
-import { getMe, login as loginRequest, type User } from '@/api/auth'
-import { TOKEN_KEY } from '@/api/api'
+import { getMe, login as loginRequest, logout as logoutRequest, type User } from '@/api/auth'
 
 type AuthContextType = {
     user: User | null
     loading: boolean
     login: (identifier: string, password: string) => Promise<void>;
-    logout: () => void;
+    logout: () => Promise<void>;
     setUser: (user: User | null) => void;
 }
 
@@ -18,25 +17,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null)
     const [loading, setLoading] = useState(true)
 
-    // On page load if a token is saved, find out who it belongs to
+    // On page load, ask the backend who is logged in. 
+    // The browser sends the cookie automatically.
     useEffect(() => {
-        const token = localStorage.getItem(TOKEN_KEY)
-        const request = token ? getMe() : Promise.resolve(null)
-        
-        request
+        getMe()
             .then(setUser)
-            .catch(() => localStorage.removeItem(TOKEN_KEY)) // token expired or invalid
+            .catch(() => setUser(null)) // no cookie, or it expired
             .finally(() => setLoading(false))
     }, [])
 
     async function login(identifier: string, password: string) {
-        const { access_token } = await loginRequest({ identifier, password })
-        localStorage.setItem(TOKEN_KEY, access_token)
+        await loginRequest({ identifier, password }) // backend sets the cookie
         setUser(await getMe())
     }
 
-    function logout() {
-        localStorage.removeItem(TOKEN_KEY)
+    async function logout() {
+        await logoutRequest().catch(() => {}) // backend deletes the cookie
         setUser(null)
     }
 

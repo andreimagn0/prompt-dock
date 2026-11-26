@@ -1,11 +1,10 @@
 import axios from "axios"
 
-export const TOKEN_KEY = "token"
+const api = axios.create({ 
+  baseURL: process.env.NEXT_PUBLIC_API_URL,
+  withCredentials: true,
+})
 
-const api = axios.create({ baseURL: process.env.NEXT_PUBLIC_API_URL })
-
-// Attach the saved token to every request. localStorage only exists in the
-// browser, so skip it when this module runs during server rendering.
 api.interceptors.request.use((config) => {
   // Without a base URL, relative paths like "/categories" hit the Next.js
   // server and come back as HTML pages instead of JSON. Fail the request so
@@ -14,12 +13,6 @@ api.interceptors.request.use((config) => {
     throw new Error(
       "NEXT_PUBLIC_API_URL is not set. Copy .env.example to .env.local and restart the dev server."
     )
-  }
-
-  const token =
-    typeof window !== "undefined" ? localStorage.getItem(TOKEN_KEY) : null
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
   }
   return config
 })

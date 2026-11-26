@@ -84,7 +84,6 @@ function httpError(status: number, detail = "Request failed") {
 // Render inside AuthProvider with alice logged in, as the protected layout
 // guarantees for these pages
 function renderAsAlice(ui: React.ReactNode) {
-  localStorage.setItem("token", "abc")
   jest.mocked(getMe).mockResolvedValue(alice)
   return render(<AuthProvider>{ui}</AuthProvider>)
 }
