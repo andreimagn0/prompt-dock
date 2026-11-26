@@ -222,6 +222,25 @@ def test_saved_skill_hidden_after_it_becomes_private(
     assert response.json() == []
 
 
+def test_skill_shows_average_rating(
+    client: TestClient, session: Session
+) -> None:
+    owner = make_user(session, "andrei")
+    other = make_user(session, "fadi")
+    skill = make_skill(session, owner, make_category(session))
+
+    client.put(
+        f"/community/skills/{skill.id}/rating", json={"value": 4}, headers=auth(owner)
+    )
+    client.put(
+        f"/community/skills/{skill.id}/rating", json={"value": 5}, headers=auth(other)
+    )
+
+    response = client.get(f"/skills/{skill.id}")
+
+    assert response.json()["average_rating"] == 4.5
+
+
 def test_create_and_list_skill_version(
     client: TestClient, session: Session
 ) -> None:

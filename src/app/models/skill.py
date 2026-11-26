@@ -80,3 +80,9 @@ class Skill(Base):
         back_populates="forked_skill",
         cascade="all, delete-orphan"
     )
+    @property
+    def average_rating(self) -> float | None:
+        """Average of all ratings, read by SkillResponse. None if nobody has rated it."""
+        if not self.ratings:
+            return None
+        return sum(rating.value for rating in self.ratings) / len(self.ratings)

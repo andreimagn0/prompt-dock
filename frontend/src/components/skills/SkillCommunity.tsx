@@ -5,8 +5,8 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/context/AuthContext"
-import type { Skill } from "@/api/skills"
-import { createSkill } from "@/api/skills"
+import { getErrorMessage } from "@/api/api"
+import { createSkill, getSkill, type Skill } from "@/api/skills"
 import {
   createFork,
   createVersion,
@@ -17,6 +17,7 @@ import {
   unsaveSkill,
   type SkillVersion,
 } from "@/api/community"
+import { Button } from "@/components/ui/button"
 import { SkillComments } from "./SkillComments"
 
 type Props = {
@@ -34,6 +35,7 @@ export function SkillCommunity({ skill }: Props) {
   const { user } = useAuth()
   const router = useRouter()
 
+  const [average, setAverage] = useState(skill.average_rating)
   const [rating, setRating] = useState(0)
   const [ratingPending, setRatingPending] = useState(false)
   const [ratingMessage, setRatingMessage] = useState("")
@@ -97,8 +99,10 @@ export function SkillCommunity({ skill }: Props) {
     try {
       await rateSkill(skill.id, { value: rating })
       setRatingMessage("Your rating was submitted.")
-    } catch {
-      setRatingMessage("Unable to submit your rating.")
+      const updated = await getSkill(skill.id)
+      setAverage(updated.average_rating)
+    } catch (error) {
+      setRatingMessage(getErrorMessage(error))
     } finally {
       setRatingPending(false)
     }
@@ -120,8 +124,8 @@ export function SkillCommunity({ skill }: Props) {
         setSaved(true)
         setSaveMessage("Skill saved.")
       }
-    } catch {
-      setSaveMessage("Unable to update saved skills.")
+    } catch (error) {
+      setSaveMessage(getErrorMessage(error))
     } finally {
       setSavePending(false)
     }
@@ -133,15 +137,12 @@ export function SkillCommunity({ skill }: Props) {
     setVersionPending(true)
     setVersionMessage("")
 
-    const nextVersion =
-      Math.max(
-        skill.current_version,
-        ...versions.map((version) => version.version_number)
-      ) + 1
+    // A snapshot of the skill as it is now, so it gets the current version number
+    const versionNumber = skill.current_version
 
     try {
       const created = await createVersion(skill.id, {
-        version_number: nextVersion,
+        version_number: versionNumber,
         title: skill.title,
         description: skill.description,
         content: skill.content,
@@ -152,9 +153,9 @@ export function SkillCommunity({ skill }: Props) {
           (a, b) => b.version_number - a.version_number
         )
       )
-      setVersionMessage(`Version ${nextVersion} saved.`)
-    } catch {
-      setVersionMessage("Unable to save this version.")
+      setVersionMessage(`Version ${versionNumber} saved.`)
+    } catch (error) {
+      setVersionMessage(getErrorMessage(error))
     } finally {
       setVersionPending(false)
     }
@@ -168,7 +169,7 @@ export function SkillCommunity({ skill }: Props) {
 
     try {
       const copy = await createSkill({
-        title: `${skill.title} (Fork)`,
+        title: `${skill.title.slice(0, 93)} (Fork)`,
         description: skill.description,
         content: skill.content,
         category_id: skill.category_id,
@@ -182,8 +183,8 @@ export function SkillCommunity({ skill }: Props) {
 
       setForkMessage("Fork created successfully.")
       router.push(`/skills/${copy.id}`)
-    } catch {
-      setForkMessage("Unable to create fork.")
+    } catch (error) {
+      setForkMessage(getErrorMessage(error))
     } finally {
       setForkPending(false)
     }
@@ -199,14 +200,14 @@ export function SkillCommunity({ skill }: Props) {
         <h3 className="font-semibold">Rating</h3>
         <p className="text-sm text-muted-foreground">
           Average rating:{" "}
-          {skill.average_rating === null
+          {average === null
             ? "Not rated yet"
-            : `${skill.average_rating.toFixed(1)} out of 5`}
+            : `${average.toFixed(1)} out of 5`}
         </p>
 
         {user ? (
           <>
-            <div className="flex items-center gap-1" aria-label="Choose a rating">
+            <div className="flex items-center gap-1" role="group" aria-label="Choose a rating">
               {[1, 2, 3, 4, 5].map((value) => (
                 <button
                   key={value}
@@ -222,14 +223,14 @@ export function SkillCommunity({ skill }: Props) {
                 </button>
               ))}
             </div>
-            <button
+            <Button
               type="button"
+              variant="outline"
               onClick={submitRating}
               disabled={rating < 1 || ratingPending}
-              className="rounded-md border px-3 py-2 text-sm font-medium disabled:opacity-50"
             >
               {ratingPending ? "Submitting..." : "Submit rating"}
-            </button>
+            </Button>
           </>
         ) : (
           <p className="text-sm text-muted-foreground">
@@ -248,18 +249,18 @@ export function SkillCommunity({ skill }: Props) {
         <h3 className="font-semibold">Saved skills</h3>
         {user ? (
           <>
-            <button
+            <Button
               type="button"
+              variant="outline"
               onClick={toggleSave}
               disabled={savePending}
-              className="rounded-md border px-3 py-2 text-sm font-medium disabled:opacity-50"
             >
               {savePending
                 ? "Updating..."
                 : saved
                   ? "Remove from saved skills"
                   : "Save skill"}
-            </button>
+            </Button>
             <Link
               href="/profile"
               className="ml-2 text-sm text-primary underline underline-offset-4"
@@ -283,14 +284,14 @@ export function SkillCommunity({ skill }: Props) {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h3 className="font-semibold">Version history</h3>
           {user?.id === skill.user_id && (
-            <button
+            <Button
               type="button"
+              variant="outline"
               onClick={saveVersion}
               disabled={versionPending}
-              className="rounded-md border px-3 py-2 text-sm font-medium disabled:opacity-50"
             >
               {versionPending ? "Saving..." : "Save current version"}
-            </button>
+            </Button>
           )}
         </div>
 
@@ -355,14 +356,14 @@ export function SkillCommunity({ skill }: Props) {
           Create your own copy of this skill that you can edit independently.
         </p>
         {user ? (
-          <button
+          <Button
             type="button"
+            variant="outline"
             onClick={forkSkill}
             disabled={forkPending}
-            className="rounded-md border px-3 py-2 text-sm font-medium disabled:opacity-50"
           >
             {forkPending ? "Creating fork..." : "Fork this skill"}
-          </button>
+          </Button>
         ) : (
           <p className="text-sm text-muted-foreground">
             Log in to fork this skill.
